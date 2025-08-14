@@ -1,3 +1,4 @@
+// public/app.js
 document.addEventListener('DOMContentLoaded', () => {
   const API = window.location.origin;
   let TOKEN = localStorage.getItem('token') || '';
@@ -71,7 +72,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Dashboard
   const peopleListEl = qs('#people_list');
-  const ideasGridEl = qs('#ideas_grid');
   const ordersListEl = qs('#orders_list');
   const currencyBadge = qs('#currencyBadge');
 
@@ -82,14 +82,7 @@ document.addEventListener('DOMContentLoaded', () => {
       renderPeople();
       const orders = await api('/orders').catch(()=>({orders:[]})); state.orders = orders.orders||[];
       renderOrders();
-      if(state.people.length){
-        const p = state.people[0]; state.currentPerson = p;
-        const q = new URLSearchParams({ age: ageFromISO(p.birthdate)||'', gender:p.gender||'', budget:p.budget||'', notes:p.notes||'' }).toString();
-        const ideas = await api('/ideas?'+q); state.ideas = ideas.ideas||[];
-        ideasGridEl.innerHTML = state.ideas.map(renderIdeaCard).join(''); attachIdeaCardHandlers();
-      } else {
-        ideasGridEl.innerHTML = '<div class="muted">Add a person to see ideas.</div>';
-      }
+      // (Gift ideas card removed from dashboard by request)
     }catch(e){ if(String(e).includes('401')) show('auth'); else alert(e.message); }
   }
 
@@ -182,16 +175,41 @@ document.addEventListener('DOMContentLoaded', () => {
     `).join('');
   }
 
-  // Gift ideas
+  // Gift ideas (client‑side budget filter + no duplicates + only as many images as exist)
   async function openGiftsFor(personId){
     try{
       const p = state.people.find(x=>x.id===personId) || state.currentPerson; if(!p) return;
       state.currentPerson = p;
-      const q = new URLSearchParams({ age: ageFromISO(p.birthdate)||'', gender:p.gender||'', budget:p.budget||'', notes:p.notes||'' }).toString();
-      const ideas = await api('/ideas?'+q); state.ideas = ideas.ideas||[];
+
+      const budget = Number(p.budget || 0);
+      const q = new URLSearchParams({
+        age: ageFromISO(p.birthdate)||'',
+        gender: p.gender||'',
+        budget: budget ? String(budget) : '',
+        notes: p.notes||''
+      }).toString();
+
+      const ideasResp = await api('/ideas?'+q);
+      let ideas = ideasResp.ideas || [];
+
+      // Client‑side safety: keep only [90%, 100%] of budget (never above)
+      if (budget > 0){
+        const min = Math.floor(budget * 0.90), max = Math.floor(budget);
+        ideas = ideas.filter(it => {
+          const price = Number(it.price_nok || it.priceNOK || 0);
+          return price && price >= min && price <= max;
+        });
+      }
+
+      state.ideas = ideas;
       qs('#gift_title').textContent = `Gift Ideas for ${p.name}`;
-      qs('#gift_subtitle').textContent = `Budget ${p.budget||'-'} NOK`;
-      const container = qs('#gift_list'); container.innerHTML = state.ideas.map(renderIdeaCard).join(''); attachIdeaCardHandlers();
+      qs('#gift_subtitle').textContent = budget ? `Budget ${budget} NOK` : '';
+      const container = qs('#gift_list');
+      container.innerHTML = state.ideas.length
+        ? state.ideas.map(renderIdeaCard).join('')
+        : '<div class="muted">No ideas matched the budget window. Try changing the budget or notes.</div>';
+      attachIdeaCardHandlers();
+
       pushNav('gifts'); show('gifts'); toggleBack(true);
     }catch(e){ alert(e.message); }
   }
@@ -203,7 +221,7 @@ document.addEventListener('DOMContentLoaded', () => {
     return `<div class="card">
       <img class="thumb" src="${img}" onerror="this.onerror=null;this.src='/img/fallback-generic.svg'" alt="${escapeHtml(it.name||'')}">
       <div class="row"><strong>${escapeHtml(it.name||'')}</strong><span class="muted">${escapeHtml(merchant)}</span></div>
-      <div class="muted">${escapeHtml(it.description||'')}</div>
+      ${it.description ? `<div class="muted">${escapeHtml(it.description)}</div>` : ''}
       <div class="row"><div class="price">${price}</div><button class="btn ghost" data-open-product="${escapeHtml(it.id)}">View</button></div>
     </div>`;
   }
@@ -211,17 +229,35 @@ document.addEventListener('DOMContentLoaded', () => {
     qsa('[data-open-product]').forEach(btn => btn.onclick = () => openProduct(btn.dataset.openProduct));
   }
 
-  // Product
+  // Product page: Description + hide Technical details if none + no duplicate images
   function openProduct(id){
     const it = state.ideas.find(x=>String(x.id)===String(id));
     if(!it) return;
     state.currentProduct = it;
+
+    // Title, price, merchant
     qs('#pd_title').textContent = it.name || 'Product';
-    qs('#pd_desc').textContent = it.description || '—';
+    qs('#pd_desc').textContent  = it.description || '';
     qs('#pd_price').textContent = (it.price_nok||it.priceNOK) ? `${Math.round(it.price_nok||it.priceNOK)} NOK` : '';
     qs('#pd_merchant').textContent = it.merchant_name||it.merchantName||'';
-    const hero = qs('#pd_hero'); hero.src = resolveImg(it);
-    const thumbs = qs('#pd_thumbs'); thumbs.innerHTML = ['', '', ''].map(()=>`<img src="${resolveImg(it)}" onerror="this.style.display='none'">`).join('');
+
+    // Images (unique, only as many as exist)
+    const urls = uniqueImages(it);
+    const hero = qs('#pd_hero');
+    hero.src = urls[0] || '/img/fallback-generic.svg';
+    const thumbs = qs('#pd_thumbs');
+    thumbs.innerHTML = urls.slice(1).map(u=>`<img src="${u}" onerror="this.style.display='none'">`).join('');
+
+    // Technical details – hide if none
+    const specs = qs('#pd_specs');
+    if (it.specs && Array.isArray(it.specs) && it.specs.length) {
+      specs.style.display = 'grid';
+      specs.innerHTML = it.specs.slice(0,10).map(s => `<div class="muted">${escapeHtml(s.key||'')}</div><div>${escapeHtml(s.value||'')}</div>`).join('');
+    } else {
+      specs.style.display = 'none';
+      specs.innerHTML = '';
+    }
+
     on('#pd_buy','click', () => buy(it), { replace:true });
     pushNav('product'); show('product'); toggleBack(true);
   }
@@ -248,7 +284,15 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   // Helpers
-  function resolveImg(it){ return it.image_url || it.imageUrl || '/img/fallback-generic.svg'; }
+  function resolveImg(it){ return it.image_url || it.imageUrl || (it.images && it.images[0]) || '/img/fallback-generic.svg'; }
+  function uniqueImages(it){
+    const arr = [];
+    if (it.image_url) arr.push(it.image_url);
+    if (it.imageUrl)  arr.push(it.imageUrl);
+    if (Array.isArray(it.images)) arr.push(...it.images);
+    // de‑dupe & truthy
+    return [...new Set(arr.filter(Boolean))];
+  }
   function ageFromISO(iso){ const d=new Date(iso); if(!isFinite(d)) return null; const n=new Date(); let a=n.getFullYear()-d.getFullYear(); const m=n.getMonth()-d.getMonth(); if(m<0||(m===0&&n.getDate()<d.getDate())) a--; return a; }
   function formatDayMonth(iso){ const d=new Date(iso); return isFinite(d)? d.toLocaleDateString(undefined,{day:'2-digit',month:'short'}) : iso; }
   function qs(s,el=document){ return el.querySelector(s); } function qsa(s,el=document){ return [...el.querySelectorAll(s)]; }
