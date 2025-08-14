@@ -122,11 +122,22 @@ textarea{ min-height:100px; resize:vertical }
 .status.processing{ background:#F5F3FF; color:#6D28D9 }
 .status.delivered{ background:#DCFCE7; color:#166534 }
 
-/* Gift cards */
+/* Gift cards (square images) */
 .card img.thumb{
-  width:100%; height:160px; object-fit:cover;
-  border-radius:14px; border:1px solid var(--border);
+  width:100%;
+  aspect-ratio:1 / 1;         /* <- makes it square */
+  object-fit:cover;
+  border-radius:14px;
+  border:1px solid var(--border);
   margin-bottom:10px;
+}
+
+/* Product thumbs (square) */
+.thumbs img{
+  width:92px; height:92px;    /* square */
+  object-fit:cover;
+  border-radius:10px;
+  border:1px solid var(--border);
 }
 
 /* Product page */
