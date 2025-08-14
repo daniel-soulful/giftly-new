@@ -24,12 +24,10 @@ function buildQuery({ age, gender, budget, notes }){
    Price parsing (NOK)
 ------------------------------ */
 function parseNokPrice(it){
-  // 1) extracted_price (best case)
   if (typeof it.extracted_price === 'number' && isFinite(it.extracted_price)) {
     return Math.round(it.extracted_price);
   }
 
-  // 2) Consider multiple string locations
   const candidates = [];
   if (it.price) candidates.push(String(it.price));
   if (it.extracted_price) candidates.push(String(it.extracted_price));
@@ -41,7 +39,6 @@ function parseNokPrice(it){
   }
 
   for (const s of candidates) {
-    // e.g. "NOK 399", "kr 399,00", "399 kr"
     const m = s.match(/(\d[\d\s.,]*)/);
     if (m) {
       const num = Number(m[1].replace(/\s/g,'').replace(',','.'));
@@ -52,21 +49,57 @@ function parseNokPrice(it){
 }
 
 /* -----------------------------
-   Image extraction (Hi‑Res first)
+   Description & specs
 ------------------------------ */
+function extractDescription(it){
+  const parts = [];
 
-// Many Google/merchant images contain size hints in the URL. Try to prefer bigger ones.
+  if (it.snippet) parts.push(it.snippet);
+
+  if (Array.isArray(it.product_highlights) && it.product_highlights.length){
+    parts.push(it.product_highlights.join('. '));
+  }
+
+  if (Array.isArray(it.product_attributes) && it.product_attributes.length){
+    const keep = new Set(['Brand','Model','Material','Color','Size','Capacity','Dimensions','Weight','Version']);
+    const kv = it.product_attributes
+      .filter(a => a?.name && a?.value && keep.has(a.name))
+      .map(a => `${a.name}: ${a.value}`);
+    if (kv.length) parts.push(kv.join(', '));
+  }
+
+  if (Array.isArray(it.extensions) && it.extensions.length){
+    parts.push(it.extensions.join(' • '));
+  }
+
+  const s = parts.join(' — ').replace(/\s+/g,' ').trim();
+  return s || '';
+}
+
+function extractSpecs(it){
+  const out = [];
+  if (Array.isArray(it.product_attributes)){
+    for (const a of it.product_attributes){
+      if (a?.name && a?.value){
+        out.push({ key: String(a.name), value: String(a.value) });
+      }
+    }
+  }
+  if (it.brand) out.push({ key:'Brand', value:String(it.brand) });
+  if (it.condition) out.push({ key:'Condition', value:String(it.condition) });
+  return out;
+}
+
+/* -----------------------------
+   Image extraction (Hi-Res first)
+------------------------------ */
 function scoreImageUrl(u){
   try {
     const url = new URL(u);
     const host = url.hostname;
-
-    // Heavily downrank encrypted tbn thumbnails (tiny)
     if (/encrypted\-tbn\d?\.gstatic\.com/.test(host)) return 1;
 
     const s = u.toLowerCase();
-
-    // Heuristics: look at common params: w/h/s/size
     const wh = s.match(/[?&](w|width|h|height|s|size)=([0-9]{2,4})/g) || [];
     let maxWH = 0;
     for (const seg of wh){
@@ -74,8 +107,7 @@ function scoreImageUrl(u){
       if (n>maxWH) maxWH=n;
     }
 
-    // Longer URLs with large w/h hints likely point to hi‑res transforms
-    const base = 50; // baseline
+    const base = 50;
     return base + Math.min(maxWH, 1600) + Math.min(u.length/10, 200);
   } catch {
     return 10;
@@ -84,8 +116,6 @@ function scoreImageUrl(u){
 
 function gatherImages(it){
   const imgs = [];
-
-  // High‑res candidates first
   if (it.image) imgs.push(it.image);
   if (Array.isArray(it.images)) imgs.push(...it.images);
   if (Array.isArray(it.product_photos)) {
@@ -94,17 +124,11 @@ function gatherImages(it){
   if (Array.isArray(it.inline_images)) {
     imgs.push(...it.inline_images.map(p => p?.link || p?.thumbnail).filter(Boolean));
   }
-
-  // Finally, add thumbnail as last resort
   if (it.thumbnail) imgs.push(it.thumbnail);
 
-  // Normalize, de‑dupe, rank best first
   const unique = [...new Set(imgs.filter(Boolean))];
-
-  // Sort by our quality score descending
   unique.sort((a,b)=> scoreImageUrl(b) - scoreImageUrl(a));
 
-  // Return top 6
   return unique.slice(0,6);
 }
 
@@ -118,7 +142,7 @@ export async function serpapiSearch(params){
   const url = new URL('https://serpapi.com/search.json');
   url.searchParams.set('engine','google_shopping');
   url.searchParams.set('q', q);
-  url.searchParams.set('gl','no'); // Norway results
+  url.searchParams.set('gl','no');
   url.searchParams.set('hl','en');
   url.searchParams.set('api_key', SERPAPI_KEY);
 
@@ -136,19 +160,22 @@ export async function serpapiSearch(params){
   const normalized = items.map((it, idx) => {
     const images = gatherImages(it);
     const price_nok = parseNokPrice(it);
+    const description = extractDescription(it);
+    const specs = extractSpecs(it);
 
     return {
       id: it.product_id || it.position || `serpapi-${Date.now()}-${idx}`,
       name: it.title || it.source || 'Product',
-      description: it.snippet || '',
+      description,
       image_url: images[0] || '',
       images,
       price_nok,
       merchant_name: it.source || '',
       tags: '',
-      external_url: it.link || ''
+      external_url: it.link || '',
+      specs
     };
-  }).filter(p => p.image_url); // ensure at least one usable image
+  }).filter(p => p.image_url);
 
   return normalized;
 }
