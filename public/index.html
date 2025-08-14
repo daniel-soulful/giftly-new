@@ -13,6 +13,7 @@
     <h1><span class="logo">Giftify</span></h1>
   </header>
   <main>
+    <!-- AUTH -->
     <section id="view-auth" class="stack-16">
       <div class="title">Welcome</div>
       <div class="card">
@@ -20,7 +21,7 @@
         <div class="stack-8">
           <input id="li_email" placeholder="Email" value="demo@example.com" />
           <input id="li_pw" placeholder="Password" type="password" value="test1234"/>
-          <button class="btn" id="btnLogin">Login</button>
+          <button class="btn primary" id="btnLogin">Login</button>
         </div>
       </div>
       <div class="card">
@@ -35,6 +36,7 @@
       </div>
     </section>
 
+    <!-- DASHBOARD -->
     <section id="view-dashboard" class="hidden">
       <div class="row">
         <div class="title">People</div>
@@ -51,6 +53,7 @@
       </div>
     </section>
 
+    <!-- ADD PERSON -->
     <section id="view-addperson" class="hidden">
       <div class="title">Add Person</div>
       <div class="stack-12">
@@ -70,12 +73,13 @@
         <label class="muted">Notes</label>
         <textarea id="p_notes" placeholder="Interests, sizes, likes, dislikes"></textarea>
         <div class="row">
-          <button class="btn" id="btnSavePerson">Save</button>
+          <button class="btn primary" id="btnSavePerson">Save</button>
           <button class="btn ghost" onclick="tabNav('dashboard')">Cancel</button>
         </div>
       </div>
     </section>
 
+    <!-- PERSON -->
     <section id="view-person" class="hidden">
       <div class="title" id="person_title">Person</div>
       <div class="card stack-8">
@@ -96,7 +100,7 @@
         <label class="muted">Notes</label>
         <textarea id="e_notes"></textarea>
         <div class="row">
-          <button class="btn" id="btnSaveEdit">Save changes</button>
+          <button class="btn primary" id="btnSaveEdit">Save changes</button>
           <button class="btn ghost" id="btnViewIdeas">View gift ideas</button>
         </div>
       </div>
@@ -106,12 +110,14 @@
       </div>
     </section>
 
+    <!-- GIFTS -->
     <section id="view-gifts" class="hidden">
       <div class="title" id="gift_title">Gift Ideas</div>
       <div class="subtitle" id="gift_subtitle">3 curated picks</div>
       <div id="gift_list" class="grid"></div>
     </section>
 
+    <!-- PRODUCT -->
     <section id="view-product" class="hidden">
       <div class="title" id="pd_title">Product</div>
       <img id="pd_hero" class="hero" src="/img/fallback-generic.svg" alt="Product image" />
@@ -128,6 +134,18 @@
       <div class="space"></div>
       <button class="btn accent" id="pd_buy">Buy Now</button>
     </section>
+
+    <!-- PROFILE (new) -->
+    <section id="view-profile" class="hidden">
+      <div class="title">Profile</div>
+      <div class="card stack-12">
+        <div class="row"><div class="muted">Name</div><div id="pf_name">—</div></div>
+        <div class="row"><div class="muted">Email</div><div id="pf_email">—</div></div>
+        <div class="row"><div class="muted">Currency</div><div id="pf_currency">NOK</div></div>
+        <div class="hr"></div>
+        <button class="btn danger" id="btnLogout">Log out</button>
+      </div>
+    </section>
   </main>
 
   <nav>
@@ -139,12 +157,12 @@
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
       Create New
     </button>
-    <button id="tab-profile" onclick="alert('Profile screen is in the main app build');">
+    <button id="tab-profile" onclick="tabNav('profile')">
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M12 12a5 5 0 1 0-5-5 5 5 0 0 0 5 5Zm0 2c-5 0-9 3-9 6v2h18v-2c0-3-4-6-9-6Z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
       Profile
     </button>
   </nav>
 </div>
-<script type="module" src="/app.js"></script>
+<script type="module" src="/app.js" defer></script>
 </body>
 </html>

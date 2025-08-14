@@ -1,229 +1,264 @@
-const API = window.location.origin;
-let TOKEN = localStorage.getItem('token') || '';
-const state = { people:[], orders:[], ideas:[], currentPerson:null, currentProduct:null };
+document.addEventListener('DOMContentLoaded', () => {
+  const API = window.location.origin;
+  let TOKEN = localStorage.getItem('token') || '';
+  const state = { user:null, people:[], orders:[], ideas:[], currentPerson:null, currentProduct:null };
 
-async function api(path, opts={}){
-  const headers = { 'Content-Type': 'application/json' };
-  if (TOKEN) headers.Authorization = 'Bearer ' + TOKEN;
-  const res = await fetch(API + path, { ...opts, headers });
-  let data;
-  try { data = await res.json(); } catch(e) {
-    const txt = await res.text().catch(()=>'');
-    throw new Error('Load failed: ' + res.status + ' ' + res.statusText + ' ' + txt.slice(0,120));
-  }
-  if (!res.ok || data.ok === false) throw new Error(data.error || ('HTTP ' + res.status));
-  return data;
-}
-
-// views/nav
-const views = {
-  auth: q('#view-auth'),
-  dashboard: q('#view-dashboard'),
-  addperson: q('#view-addperson'),
-  person: q('#view-person'),
-  gifts: q('#view-gifts'),
-  product: q('#view-product'),
-};
-const backBtn = q('#backBtn');
-const tabs = { dashboard: q('#tab-dashboard'), create: q('#tab-create') };
-let navStack = []; let currentView='auth';
-function show(view){ Object.values(views).forEach(v => v.classList.add('hidden')); views[view].classList.remove('hidden'); currentView=view; }
-function setTabs(active){ Object.values(tabs).forEach(t => t.classList.remove('active')); if(active==='dashboard') tabs.dashboard.classList.add('active'); if(active==='addperson') tabs.create.classList.add('active'); }
-function pushNav(next){ if(currentView && currentView!==next) navStack.push(currentView); }
-function goBack(){ const prev = navStack.pop(); if(prev){ show(prev); setTabs(prev==='dashboard'?'dashboard':prev==='addperson'?'addperson':null); toggleBack(navStack.length>0);} else { tabNav('dashboard'); } }
-function toggleBack(showB){ if(showB){ backBtn.classList.remove('hidden'); backBtn.onclick=()=>goBack(); } else { backBtn.classList.add('hidden'); backBtn.onclick=null; } }
-function tabNav(target){ navStack=[]; show(target); setTabs(target==='dashboard'?'dashboard':target==='addperson'?'addperson':null); toggleBack(false); if(target==='dashboard') loadDashboard(); }
-
-// auth
-q('#btnLogin').onclick = async () => {
-  try{
-    const j = await api('/auth/login',{method:'POST', body: JSON.stringify({ email: q('#li_email').value.trim(), password: q('#li_pw').value })});
-    TOKEN = j.token; localStorage.setItem('token', TOKEN); tabNav('dashboard');
-  }catch(e){ alert(e.message); }
-};
-q('#btnSignup').onclick = async () => {
-  const name = q('#su_name').value.trim(), email = q('#su_email').value.trim(), pw = q('#su_pw').value;
-  const err = q('#su_error'); err.textContent='';
-  if(!name||!email||!pw){ err.textContent='Please fill in all fields'; return; }
-  if(!email.includes('@')){ err.textContent='Please enter a valid email'; return; }
-  try{
-    const j = await api('/auth/signup',{method:'POST', body: JSON.stringify({ fullName:name, email, password:pw, country:'Norway' })});
-    TOKEN = j.token; localStorage.setItem('token', TOKEN); tabNav('dashboard');
-  }catch(e){ err.textContent=e.message; }
-};
-
-// dashboard
-const peopleListEl = q('#people_list');
-const ideasGridEl = q('#ideas_grid');
-const ordersListEl = q('#orders_list');
-const currencyBadge = q('#currencyBadge');
-
-async function loadDashboard(){
-  try{
-    currencyBadge.textContent = 'NOK';
-    const people = await api('/people'); state.people = people.people||[];
-    renderPeople();
-    const orders = await api('/orders').catch(()=>({orders:[]})); state.orders = orders.orders||[];
-    renderOrders();
-    if(state.people.length){
-      const p = state.people[0]; state.currentPerson = p;
-      const qstr = new URLSearchParams({ age: ageFromISO(p.birthdate)||'', gender:p.gender||'', budget:p.budget||'', notes:p.notes||'' }).toString();
-      const ideas = await api('/ideas?'+qstr); state.ideas = ideas.ideas||[];
-      ideasGridEl.innerHTML = state.ideas.map(renderIdeaCard).join(''); attachIdeaCardHandlers();
-    } else {
-      ideasGridEl.innerHTML = '<div class="muted">Add a person to see ideas.</div>';
+  async function api(path, opts={}){
+    const headers = { 'Content-Type': 'application/json' };
+    if (TOKEN) headers.Authorization = 'Bearer ' + TOKEN;
+    const res = await fetch(API + path, { ...opts, headers });
+    let data;
+    try { data = await res.json(); } catch(e) {
+      const txt = await res.text().catch(()=> '');
+      throw new Error('Load failed: ' + res.status + ' ' + res.statusText + ' ' + txt.slice(0,120));
     }
-  }catch(e){ if(String(e).includes('401')) show('auth'); else alert(e.message); }
-}
+    if (!res.ok || data.ok === false) throw new Error(data.error || ('HTTP ' + res.status));
+    return data;
+  }
 
-function renderPeople(){
-  peopleListEl.innerHTML = state.people.map(p => `
-    <div class="card">
+  // Views & simple nav
+  const views = {
+    auth: qs('#view-auth'),
+    dashboard: qs('#view-dashboard'),
+    addperson: qs('#view-addperson'),
+    person: qs('#view-person'),
+    gifts: qs('#view-gifts'),
+    product: qs('#view-product'),
+    profile: qs('#view-profile'),
+  };
+  const backBtn = qs('#backBtn');
+  const tabs = { dashboard: qs('#tab-dashboard'), create: qs('#tab-create'), profile: qs('#tab-profile') };
+  let navStack = []; let currentView='auth';
+
+  function show(view){
+    Object.values(views).forEach(v => v.classList.add('hidden'));
+    views[view].classList.remove('hidden');
+    currentView=view;
+  }
+  function setTabs(active){
+    Object.values(tabs).forEach(t => t.classList.remove('active'));
+    if(active && tabs[active]) tabs[active].classList.add('active');
+  }
+  function pushNav(next){ if(currentView && currentView!==next) navStack.push(currentView); }
+  function goBack(){ const prev = navStack.pop(); if(prev){ show(prev); setTabs(prev==='dashboard'?'dashboard':prev==='addperson'?'create':prev==='profile'?'profile':null); toggleBack(navStack.length>0);} else { tabNav('dashboard'); } }
+  function toggleBack(showB){ if(showB){ backBtn.classList.remove('hidden'); backBtn.onclick=()=>goBack(); } else { backBtn.classList.add('hidden'); backBtn.onclick=null; } }
+  window.tabNav = function(target){
+    navStack=[];
+    if (target==='dashboard') { show('dashboard'); setTabs('dashboard'); loadDashboard(); toggleBack(false); return; }
+    if (target==='addperson') { show('addperson'); setTabs('create'); toggleBack(false); return; }
+    if (target==='profile') { show('profile'); setTabs('profile'); renderProfile(); toggleBack(false); return; }
+  }
+
+  // Auth
+  on('#btnLogin','click', async () => {
+    try{
+      const j = await api('/auth/login',{method:'POST', body: JSON.stringify({ email: qs('#li_email').value.trim(), password: qs('#li_pw').value })});
+      TOKEN = j.token; state.user = j.user; localStorage.setItem('token', TOKEN);
+      tabNav('dashboard');
+    }catch(e){ alert(e.message); }
+  });
+  on('#btnSignup','click', async () => {
+    const name = qs('#su_name').value.trim(), email = qs('#su_email').value.trim(), pw = qs('#su_pw').value;
+    const err = qs('#su_error'); err.textContent='';
+    if(!name||!email||!pw){ err.textContent='Please fill in all fields'; return; }
+    if(!email.includes('@')){ err.textContent='Please enter a valid email'; return; }
+    try{
+      const j = await api('/auth/signup',{method:'POST', body: JSON.stringify({ fullName:name, email, password:pw, country:'Norway' })});
+      TOKEN = j.token; state.user = j.user; localStorage.setItem('token', TOKEN);
+      tabNav('dashboard');
+    }catch(e){ err.textContent=e.message; }
+  });
+
+  // Dashboard
+  const peopleListEl = qs('#people_list');
+  const ideasGridEl = qs('#ideas_grid');
+  const ordersListEl = qs('#orders_list');
+  const currencyBadge = qs('#currencyBadge');
+
+  async function loadDashboard(){
+    try{
+      currencyBadge.textContent = 'NOK';
+      const people = await api('/people'); state.people = people.people||[];
+      renderPeople();
+      const orders = await api('/orders').catch(()=>({orders:[]})); state.orders = orders.orders||[];
+      renderOrders();
+      if(state.people.length){
+        const p = state.people[0]; state.currentPerson = p;
+        const q = new URLSearchParams({ age: ageFromISO(p.birthdate)||'', gender:p.gender||'', budget:p.budget||'', notes:p.notes||'' }).toString();
+        const ideas = await api('/ideas?'+q); state.ideas = ideas.ideas||[];
+        ideasGridEl.innerHTML = state.ideas.map(renderIdeaCard).join(''); attachIdeaCardHandlers();
+      } else {
+        ideasGridEl.innerHTML = '<div class="muted">Add a person to see ideas.</div>';
+      }
+    }catch(e){ if(String(e).includes('401')) show('auth'); else alert(e.message); }
+  }
+
+  function renderPeople(){
+    peopleListEl.innerHTML = state.people.map(p => `
+      <div class="card">
+        <div class="row">
+          <div class="clickable-area" data-id="${p.id}">
+            <div><strong>${escapeHtml(p.name)}</strong> • <span class="muted">${formatDayMonth(p.birthdate)}</span></div>
+            <div class="muted">${p.budget||'-'} NOK • ${p.notes ? escapeHtml(p.notes) : ''}</div>
+          </div>
+          <div style="display:flex; gap:8px;">
+            <button class="btn ghost" data-action="ideas" data-id="${p.id}">View Ideas</button>
+          </div>
+        </div>
+      </div>
+    `).join('') || '<div class="card muted">No people yet. Add someone.</div>';
+    qsa('.clickable-area', peopleListEl).forEach(el => el.onclick = ()=> openPerson(parseInt(el.dataset.id,10)));
+    qsa('button[data-action="ideas"]', peopleListEl).forEach(btn => btn.onclick = ()=> openGiftsFor(parseInt(btn.dataset.id,10)));
+  }
+
+  function renderOrders(){
+    if(!state.orders.length){ ordersListEl.innerHTML = '<div class="muted">No orders yet.</div>'; return; }
+    ordersListEl.innerHTML = state.orders.map(o=>`
+      <div class="row"><div>
+        <div class="muted">${new Date(o.created_at).toLocaleDateString()} • <span class="status placed">${o.status}</span></div>
+        <div><strong>${escapeHtml(o.product_name||o.productId)}</strong></div>
+      </div><div class="price">${o.price_paid_nok} NOK</div></div>
+    `).join('');
+  }
+
+  // Add person
+  on('#btnSavePerson','click', async () => {
+    try{
+      const body = {
+        name: qs('#p_name').value.trim(),
+        birthdate: qs('#p_bday').value,
+        gender: qs('#p_gender').value,
+        budget: Number(qs('#p_budget').value||0),
+        notes: qs('#p_notes').value
+      };
+      if(!body.name||!body.birthdate) return alert('Please enter name and birthday.');
+      await api('/people',{method:'POST', body: JSON.stringify(body)});
+      tabNav('dashboard');
+    }catch(e){ alert(e.message); }
+  });
+
+  // Edit person
+  on('#btnViewIdeas','click', () => { if(state.currentPerson) openGiftsFor(state.currentPerson.id); });
+  on('#btnSaveEdit','click', async () => {
+    const p = state.currentPerson; if(!p) return;
+    try{
+      const body = {
+        name: qs('#e_name').value.trim(),
+        birthdate: qs('#e_bday').value,
+        gender: qs('#e_gender').value,
+        budget: Number(qs('#e_budget').value||0),
+        notes: qs('#e_notes').value
+      };
+      await api('/people/'+p.id,{method:'PUT', body: JSON.stringify(body)});
+      tabNav('dashboard');
+    }catch(e){ alert(e.message); }
+  });
+
+  async function openPerson(id){
+    try{
+      const j = await api('/people/'+id);
+      const p = j.person; state.currentPerson = p;
+      qs('#person_title').textContent = p.name;
+      qs('#e_name').value = p.name;
+      qs('#e_bday').value = p.birthdate;
+      qs('#e_gender').value = p.gender||'';
+      qs('#e_budget').value = p.budget||0;
+      qs('#e_notes').value = p.notes||'';
+      renderPersonOrders(j.orders||[]);
+      pushNav('person'); show('person'); toggleBack(true);
+    }catch(e){ alert(e.message); }
+  }
+  function renderPersonOrders(orders){
+    const el = qs('#person_orders');
+    if(!orders.length){ el.innerHTML = '<div class="muted">No purchases yet.</div>'; return; }
+    el.innerHTML = orders.map(o => `
       <div class="row">
-        <div class="clickable-area" data-id="${p.id}">
-          <div><strong>${esc(p.name)}</strong> • <span class="muted">${formatDayMonth(p.birthdate)}</span></div>
-          <div class="muted">${p.budget||'-'} NOK • ${p.notes ? esc(p.notes) : ''}</div>
+        <div>
+          <div class="muted">${new Date(o.created_at).toLocaleDateString()} • ${o.status}</div>
+          <div><strong>${escapeHtml(o.product_name||o.productId)}</strong></div>
         </div>
-        <div style="display:flex; gap:8px;">
-          <button class="btn ghost" data-action="ideas" data-id="${p.id}">View Ideas</button>
-        </div>
+        <div class="price">${o.price_paid_nok} NOK</div>
       </div>
-    </div>
-  `).join('') || '<div class="card muted">No people yet. Add someone.</div>';
-  qa('.clickable-area', peopleListEl).forEach(el => el.onclick = ()=> openPerson(parseInt(el.dataset.id,10)));
-  qa('button[data-action="ideas"]', peopleListEl).forEach(btn => btn.onclick = ()=> openGiftsFor(parseInt(btn.dataset.id,10)));
-}
+    `).join('');
+  }
 
-function renderOrders(){
-  if(!state.orders.length){ ordersListEl.innerHTML = '<div class="muted">No orders yet.</div>'; return; }
-  ordersListEl.innerHTML = state.orders.map(o=>`
-    <div class="row"><div>
-      <div class="muted">${new Date(o.created_at).toLocaleDateString()} • <span class="status placed">${o.status}</span></div>
-      <div><strong>${esc(o.product_name||o.productId)}</strong></div>
-    </div><div class="price">${o.price_paid_nok} NOK</div></div>
-  `).join('');
-}
+  // Gift ideas
+  async function openGiftsFor(personId){
+    try{
+      const p = state.people.find(x=>x.id===personId) || state.currentPerson; if(!p) return;
+      state.currentPerson = p;
+      const q = new URLSearchParams({ age: ageFromISO(p.birthdate)||'', gender:p.gender||'', budget:p.budget||'', notes:p.notes||'' }).toString();
+      const ideas = await api('/ideas?'+q); state.ideas = ideas.ideas||[];
+      qs('#gift_title').textContent = `Gift Ideas for ${p.name}`;
+      qs('#gift_subtitle').textContent = `Budget ${p.budget||'-'} NOK`;
+      const container = qs('#gift_list'); container.innerHTML = state.ideas.map(renderIdeaCard).join(''); attachIdeaCardHandlers();
+      pushNav('gifts'); show('gifts'); toggleBack(true);
+    }catch(e){ alert(e.message); }
+  }
 
-// add person
-q('#btnSavePerson').onclick = async () => {
-  try{
-    const body = {
-      name: q('#p_name').value.trim(),
-      birthdate: q('#p_bday').value,
-      gender: q('#p_gender').value,
-      budget: Number(q('#p_budget').value||0),
-      notes: q('#p_notes').value
-    };
-    if(!body.name||!body.birthdate) return alert('Please enter name and birthday.');
-    await api('/people',{method:'POST', body: JSON.stringify(body)});
-    tabNav('dashboard');
-  }catch(e){ alert(e.message); }
-};
+  function renderIdeaCard(it){
+    const img = resolveImg(it);
+    const price = (it.price_nok||it.priceNOK||0) ? `${Math.round(it.price_nok||it.priceNOK)} NOK` : '';
+    const merchant = it.merchant_name||it.merchantName||'';
+    return `<div class="card">
+      <img class="thumb" src="${img}" onerror="this.onerror=null;this.src='/img/fallback-generic.svg'" alt="${escapeHtml(it.name||'')}">
+      <div class="row"><strong>${escapeHtml(it.name||'')}</strong><span class="muted">${escapeHtml(merchant)}</span></div>
+      <div class="muted">${escapeHtml(it.description||'')}</div>
+      <div class="row"><div class="price">${price}</div><button class="btn ghost" data-open-product="${escapeHtml(it.id)}">View</button></div>
+    </div>`;
+  }
+  function attachIdeaCardHandlers(){
+    qsa('[data-open-product]').forEach(btn => btn.onclick = () => openProduct(btn.dataset.openProduct));
+  }
 
-// edit person
-q('#btnViewIdeas').onclick = () => { if(state.currentPerson) openGiftsFor(state.currentPerson.id); };
-q('#btnSaveEdit').onclick = async () => {
-  const p = state.currentPerson; if(!p) return;
-  try{
-    const body = {
-      name: q('#e_name').value.trim(),
-      birthdate: q('#e_bday').value,
-      gender: q('#e_gender').value,
-      budget: Number(q('#e_budget').value||0),
-      notes: q('#e_notes').value
-    };
-    await api('/people/'+p.id,{method:'PUT', body: JSON.stringify(body)});
-    tabNav('dashboard');
-  }catch(e){ alert(e.message); }
-};
+  // Product
+  function openProduct(id){
+    const it = state.ideas.find(x=>String(x.id)===String(id));
+    if(!it) return;
+    state.currentProduct = it;
+    qs('#pd_title').textContent = it.name || 'Product';
+    qs('#pd_desc').textContent = it.description || '—';
+    qs('#pd_price').textContent = (it.price_nok||it.priceNOK) ? `${Math.round(it.price_nok||it.priceNOK)} NOK` : '';
+    qs('#pd_merchant').textContent = it.merchant_name||it.merchantName||'';
+    const hero = qs('#pd_hero'); hero.src = resolveImg(it);
+    const thumbs = qs('#pd_thumbs'); thumbs.innerHTML = ['', '', ''].map(()=>`<img src="${resolveImg(it)}" onerror="this.style.display='none'">`).join('');
+    on('#pd_buy','click', () => buy(it), { replace:true });
+    pushNav('product'); show('product'); toggleBack(true);
+  }
 
-async function openPerson(id){
-  try{
-    const j = await api('/people/'+id);
-    const p = j.person; state.currentPerson = p;
-    q('#person_title').textContent = p.name;
-    q('#e_name').value = p.name;
-    q('#e_bday').value = p.birthdate;
-    q('#e_gender').value = p.gender||'';
-    q('#e_budget').value = p.budget||0;
-    q('#e_notes').value = p.notes||'';
-    renderPersonOrders(j.orders||[]);
-    pushNav('person'); show('person'); toggleBack(true);
-  }catch(e){ alert(e.message); }
-}
-function renderPersonOrders(orders){
-  const el = q('#person_orders');
-  if(!orders.length){ el.innerHTML = '<div class="muted">No purchases yet.</div>'; return; }
-  el.innerHTML = orders.map(o => `
-    <div class="row">
-      <div>
-        <div class="muted">${new Date(o.created_at).toLocaleDateString()} • ${o.status}</div>
-        <div><strong>${esc(o.product_name||o.productId)}</strong></div>
-      </div>
-      <div class="price">${o.price_paid_nok} NOK</div>
-    </div>
-  `).join('');
-}
+  async function buy(it){
+    if(it.external_url){ window.open(it.external_url, '_blank'); return; } // testing flow
+    try{
+      const personId = state.currentPerson?.id || state.people[0]?.id || null;
+      const j = await api('/orders',{method:'POST', body: JSON.stringify({ personId, productId: it.id, qty:1 })});
+      alert('Success. Order #'+j.id);
+      tabNav('dashboard');
+    }catch(e){ alert(e.message); }
+  }
 
-// gift ideas
-async function openGiftsFor(personId){
-  try{
-    const p = state.people.find(x=>x.id===personId) || state.currentPerson; if(!p) return;
-    state.currentPerson = p;
-    const qstr = new URLSearchParams({ age: ageFromISO(p.birthdate)||'', gender:p.gender||'', budget:p.budget||'', notes:p.notes||'' }).toString();
-    const ideas = await api('/ideas?'+qstr); state.ideas = ideas.ideas||[];
-    q('#gift_title').textContent = `Gift Ideas for ${p.name}`;
-    q('#gift_subtitle').textContent = `Budget ${p.budget||'-'} NOK`;
-    const container = q('#gift_list'); container.innerHTML = state.ideas.map(renderIdeaCard).join(''); attachIdeaCardHandlers();
-    pushNav('gifts'); show('gifts'); toggleBack(true);
-  }catch(e){ alert(e.message); }
-}
+  // Profile
+  function renderProfile(){
+    qs('#pf_name').textContent = state.user?.fullName || '—';
+    qs('#pf_email').textContent = state.user?.email || '—';
+    qs('#pf_currency').textContent = 'NOK';
+  }
+  on('#btnLogout','click', () => {
+    TOKEN=''; state.user=null; localStorage.removeItem('token');
+    show('auth'); setTabs(null); toggleBack(false);
+  });
 
-function renderIdeaCard(it){
-  const img = resolveImg(it);
-  const price = (it.price_nok||it.priceNOK||0) ? `${Math.round(it.price_nok||it.priceNOK)} NOK` : '';
-  const merchant = it.merchant_name||it.merchantName||'';
-  return `<div class="card">
-    <img src="${img}" onerror="this.onerror=null;this.src='/img/fallback-generic.svg'" alt="${esc(it.name||'')}" style="width:100%;height:160px;object-fit:cover;border-radius:12px;border:1px solid #E5E7EB">
-    <div class="row"><strong>${esc(it.name||'')}</strong><span class="muted">${esc(merchant)}</span></div>
-    <div class="muted">${esc(it.description||'')}</div>
-    <div class="row"><div class="price">${price}</div><button class="btn ghost" data-open-product="${esc(it.id)}">View</button></div>
-  </div>`;
-}
-function attachIdeaCardHandlers(){
-  qa('[data-open-product]').forEach(btn=> btn.onclick = () => openProduct(btn.dataset.openProduct));
-}
+  // Helpers
+  function resolveImg(it){ return it.image_url || it.imageUrl || '/img/fallback-generic.svg'; }
+  function ageFromISO(iso){ const d=new Date(iso); if(!isFinite(d)) return null; const n=new Date(); let a=n.getFullYear()-d.getFullYear(); const m=n.getMonth()-d.getMonth(); if(m<0||(m===0&&n.getDate()<d.getDate())) a--; return a; }
+  function formatDayMonth(iso){ const d=new Date(iso); return isFinite(d)? d.toLocaleDateString(undefined,{day:'2-digit',month:'short'}) : iso; }
+  function qs(s,el=document){ return el.querySelector(s); } function qsa(s,el=document){ return [...el.querySelectorAll(s)]; }
+  function escapeHtml(s){ return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+  function on(selector, evt, handler, opts={}){
+    const el = qs(selector); if(!el) return;
+    if (opts.replace) el.replaceWith(el.cloneNode(true)); // drop old listeners if any
+    (opts.replace ? qs(selector) : el).addEventListener(evt, handler);
+  }
 
-// product
-function openProduct(id){
-  const it = state.ideas.find(x=>String(x.id)===String(id));
-  if(!it) return;
-  state.currentProduct = it;
-  q('#pd_title').textContent = it.name || 'Product';
-  q('#pd_desc').textContent = it.description || '—';
-  q('#pd_price').textContent = (it.price_nok||it.priceNOK) ? `${Math.round(it.price_nok||it.priceNOK)} NOK` : '';
-  q('#pd_merchant').textContent = it.merchant_name||it.merchantName||'';
-  q('#pd_hero').src = resolveImg(it);
-  q('#pd_thumbs').innerHTML = ['', '', ''].map(()=>`<img src="${resolveImg(it)}" onerror="this.style.display='none'">`).join('');
-  q('#pd_buy').onclick = () => buy(it);
-  pushNav('product'); show('product'); toggleBack(true);
-}
-
-async function buy(it){
-  if(it.external_url){ window.open(it.external_url, '_blank'); return; } // testing
-  try{
-    const personId = state.currentPerson?.id || state.people[0]?.id || null;
-    const j = await api('/orders',{method:'POST', body: JSON.stringify({ personId, productId: it.id, qty:1 })});
-    alert('Success. Order #'+j.id);
-    tabNav('dashboard');
-  }catch(e){ alert(e.message); }
-}
-
-// helpers
-function resolveImg(it){ return it.image_url || it.imageUrl || '/img/fallback-generic.svg'; }
-function ageFromISO(iso){ const d=new Date(iso); if(!isFinite(d)) return null; const n=new Date(); let a=n.getFullYear()-d.getFullYear(); const m=n.getMonth()-d.getMonth(); if(m<0||(m===0&&n.getDate()<d.getDate())) a--; return a; }
-function formatDayMonth(iso){ const d=new Date(iso); return isFinite(d)? d.toLocaleDateString(undefined,{day:'2-digit',month:'short'}) : iso; }
-function q(s,el=document){ return el.querySelector(s); } function qa(s,el=document){ return [...el.querySelectorAll(s)]; }
-function esc(s){ return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
-
-if(TOKEN){ tabNav('dashboard'); } else { show('auth'); }
+  // Boot
+  if(TOKEN){ tabNav('dashboard'); } else { show('auth'); }
+});
