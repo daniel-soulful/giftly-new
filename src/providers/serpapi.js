@@ -19,12 +19,9 @@ function buildQuery({ age, gender, budget, notes }){
 
 // Try to extract a numeric NOK price from various SerpAPI fields
 function parseNokPrice(it){
-  // 1) extracted_price (most reliable when present)
   if (typeof it.extracted_price === 'number' && isFinite(it.extracted_price)) {
     return Math.round(it.extracted_price);
   }
-
-  // 2) price string, e.g. "NOK 399", "kr 399,00", "399 kr"
   const candidates = [];
   if (it.price) candidates.push(String(it.price));
   if (it.extracted_price) candidates.push(String(it.extracted_price));
@@ -35,7 +32,6 @@ function parseNokPrice(it){
     }
   }
   for (const s of candidates) {
-    // keep digits, dots and commas, then normalize comma to dot
     const m = s.match(/(\d[\d\s.,]*)/);
     if (m) {
       const num = Number(m[1].replace(/\s/g,'').replace(',','.'));
@@ -52,7 +48,7 @@ export async function serpapiSearch(params){
   const url = new URL('https://serpapi.com/search.json');
   url.searchParams.set('engine','google_shopping');
   url.searchParams.set('q', q);
-  url.searchParams.set('gl','no'); // Norway
+  url.searchParams.set('gl','no');
   url.searchParams.set('hl','en');
   url.searchParams.set('api_key', SERPAPI_KEY);
 
@@ -76,7 +72,6 @@ export async function serpapiSearch(params){
       imgs.push(...it.product_photos.map(p => p?.link || p?.thumbnail).filter(Boolean));
     }
     const uniqueImgs = [...new Set(imgs.filter(Boolean))].slice(0, 6);
-
     const price_nok = parseNokPrice(it);
 
     return {
