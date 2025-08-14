@@ -4,7 +4,7 @@ import { serpapiSearch } from '../providers/serpapi.js';
 import OpenAI from 'openai';
 
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY || '';
-const OPENAI_MODEL   = process.env.OPENAI_MODEL || 'gpt-4o-mini'; // fast/affordable. Docs: platform.openai.com. 
+const OPENAI_MODEL   = process.env.OPENAI_MODEL || 'gpt-4o-mini'; // fast & affordable
 
 /* --------------------------
    Budget helpers
@@ -44,17 +44,15 @@ const pickTop = (items, n) => items.slice(0, n);
 ---------------------------*/
 // Ensure every product has a short, useful description
 function fallbackDescription(it, {budget, notes}){
-  const parts = [];
-  if (it.description) return it.description;
+  if (it.description && String(it.description).trim()) return it.description;
 
-  // Try to synthesize something readable from fields we do have:
+  const parts = [];
   const name = it.name ? String(it.name) : 'Gift item';
   const merchant = it.merchant_name ? ` from ${it.merchant_name}` : '';
   const price = Number(it.price_nok||0) ? ` around ${Math.round(it.price_nok)} NOK` : '';
 
   parts.push(`${name}${merchant}${price}`.trim());
 
-  // If user left notes (interests), add a hint line
   if (notes){
     parts.push(`Relevant for: ${notes}`);
   }
@@ -69,12 +67,11 @@ function applyNotesAgeGenderFilter(items, { age, gender, notes }){
   let pool = items;
 
   if (age > 0){
-    const before = pool.length;
     if (age <= 6) pool = pool.filter(p => (p.tags||'').includes('kids'));
     else if (age <= 12) pool = pool.filter(p => /(kids|toy|family|ce)/.test(p.tags||''));
     else if (age <= 17) pool = pool.filter(p => /(teen|gadgets|outdoor|music|lego)/.test(p.tags||''));
     else pool = pool.filter(p => !(p.tags||'').includes('kids'));
-    if (pool.length === 0) pool = items; // don't over-filter
+    if (pool.length === 0) pool = items; // avoid over-filter
   }
 
   if (n){
@@ -131,7 +128,6 @@ async function gptRerankAndEnrich({ items, age, gender, budget, notes }){
 
   const client = new OpenAI({ apiKey: OPENAI_API_KEY });
 
-  // We’ll send a compact JSON with candidates and ask the model for top 3 + better descriptions.
   const system = `You are a careful gift curator. Pick the 3 best gift products for the person considering AGE, GENDER, NOTES, and BUDGET.
 Rules:
 - Never exceed the budget.
@@ -151,7 +147,6 @@ Rules:
     }))
   };
 
-  // Using Chat Completions/Responses style per OpenAI docs.  [oai_citation:1‡OpenAI Plattform](https://platform.openai.com/docs/api-reference/chat?utm_source=chatgpt.com)
   const resp = await client.chat.completions.create({
     model: OPENAI_MODEL,
     response_format: { type: "json_object" },
@@ -168,7 +163,6 @@ Rules:
   } catch {
     return null;
   }
-  // Expect: { picks: [{id, description}], rationale?: string }
   if (!parsed || !Array.isArray(parsed.picks)) return null;
 
   const byId = new Map(items.map(x => [String(x.id), x]));
@@ -178,7 +172,6 @@ Rules:
     if (!base) continue;
     enriched.push({
       ...base,
-      // Replace/upgrade description if GPT gave one
       description: (pick.description && String(pick.description).trim()) || fallbackDescription(base, {budget, notes}),
     });
   }
@@ -214,7 +207,7 @@ export async function ideasFor(req,res){
   live = uniqBy(live, x => x.id || (x.name||'').toLowerCase());
   dbg.steps.live_deduped = live.length;
 
-  // Progressive selection (ensures we have candidates)
+  // Progressive selection
   let chosen = selectWithBudgetProgressive(live, budget, meta, 3);
   dbg.steps.live_selected_progressive = chosen.length;
 
@@ -243,7 +236,7 @@ export async function ideasFor(req,res){
     }
   }
 
-  // 3) If GPT is configured, rerank & enrich descriptions
+  // 3) GPT: rerank & enrich (optional)
   let gptUsed = false;
   if (OPENAI_API_KEY && chosen.length){
     try{
@@ -259,13 +252,13 @@ export async function ideasFor(req,res){
   }
   dbg.steps.gpt_used = gptUsed;
 
-  // 4) Final safety: fill any missing descriptions with fallbacks
+  // 4) Final safety: fill missing descriptions
   chosen = chosen.map(it => ({
     ...it,
     description: fallbackDescription(it, {budget, notes})
   }));
 
-  // 5) Always return up to 3
+  // 5) Respond
   const ideas = chosen.slice(0,3);
   if (debug) return res.json({ ok:true, debug: dbg, ideas });
   return res.json({ ok:true, ideas });
