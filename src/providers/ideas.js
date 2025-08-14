@@ -1,7 +1,14 @@
 // src/services/ideas.js
 import { all } from './db.js';
 import { serpapiSearch } from '../providers/serpapi.js';
+import OpenAI from 'openai';
 
+const OPENAI_API_KEY = process.env.OPENAI_API_KEY || '';
+const OPENAI_MODEL   = process.env.OPENAI_MODEL || 'gpt-4o-mini'; // fast/affordable. Docs: platform.openai.com. 
+
+/* --------------------------
+   Budget helpers
+---------------------------*/
 const withinWindow = (price, budget, minRatio=0.9) => {
   if (!budget || !price) return false;
   const min = Math.floor(budget * minRatio);
@@ -12,6 +19,10 @@ const withinMax = (price, budget) => {
   if (!budget || !price) return false;
   return price <= Math.floor(budget);
 };
+
+/* --------------------------
+   Utility helpers
+---------------------------*/
 const norm = (s='') => String(s).toLowerCase();
 const uniqBy = (arr, keyFn) => {
   const seen = new Set(); const out = [];
@@ -28,9 +39,33 @@ const rankByClosenessToBudget = (items, budget) => {
 };
 const pickTop = (items, n) => items.slice(0, n);
 
+/* --------------------------
+   Content fallbacks
+---------------------------*/
+// Ensure every product has a short, useful description
+function fallbackDescription(it, {budget, notes}){
+  const parts = [];
+  if (it.description) return it.description;
+
+  // Try to synthesize something readable from fields we do have:
+  const name = it.name ? String(it.name) : 'Gift item';
+  const merchant = it.merchant_name ? ` from ${it.merchant_name}` : '';
+  const price = Number(it.price_nok||0) ? ` around ${Math.round(it.price_nok)} NOK` : '';
+
+  parts.push(`${name}${merchant}${price}`.trim());
+
+  // If user left notes (interests), add a hint line
+  if (notes){
+    parts.push(`Relevant for: ${notes}`);
+  }
+  return parts.filter(Boolean).join('. ');
+}
+
+/* --------------------------
+   Persona filters (soft)
+---------------------------*/
 function applyNotesAgeGenderFilter(items, { age, gender, notes }){
   const n = norm(notes||'');
-  const g = norm(gender||'');
   let pool = items;
 
   if (age > 0){
@@ -55,6 +90,9 @@ function applyNotesAgeGenderFilter(items, { age, gender, notes }){
   return pool;
 }
 
+/* --------------------------
+   Progressive budget selection
+---------------------------*/
 function selectWithBudgetProgressive(items, budget, meta, need=3){
   // 1) 90–100%
   let out = items.filter(x => withinWindow(Number(x.price_nok||0), budget, 0.90));
@@ -85,6 +123,71 @@ function selectWithBudgetProgressive(items, budget, meta, need=3){
   return pickTop(out, Math.min(need, out.length));
 }
 
+/* --------------------------
+   GPT re-ranker / enricher (optional)
+---------------------------*/
+async function gptRerankAndEnrich({ items, age, gender, budget, notes }){
+  if (!OPENAI_API_KEY) return null;
+
+  const client = new OpenAI({ apiKey: OPENAI_API_KEY });
+
+  // We’ll send a compact JSON with candidates and ask the model for top 3 + better descriptions.
+  const system = `You are a careful gift curator. Pick the 3 best gift products for the person considering AGE, GENDER, NOTES, and BUDGET.
+Rules:
+- Never exceed the budget.
+- Prefer items 90–100% of budget; if not possible, go lower but still practical.
+- Avoid duplicates.
+- Write a concise 1–2 sentence description that explains why it fits the person.`;
+
+  const user = {
+    age, gender, budget, notes,
+    candidates: items.map(p => ({
+      id: p.id,
+      name: p.name,
+      price_nok: p.price_nok,
+      merchant_name: p.merchant_name,
+      description: p.description || '',
+      tags: p.tags || '',
+    }))
+  };
+
+  // Using Chat Completions/Responses style per OpenAI docs.  [oai_citation:1‡OpenAI Plattform](https://platform.openai.com/docs/api-reference/chat?utm_source=chatgpt.com)
+  const resp = await client.chat.completions.create({
+    model: OPENAI_MODEL,
+    response_format: { type: "json_object" },
+    messages: [
+      { role: "system", content: system },
+      { role: "user", content: JSON.stringify(user) }
+    ],
+    temperature: 0.2,
+  });
+
+  let parsed;
+  try {
+    parsed = JSON.parse(resp.choices?.[0]?.message?.content || '{}');
+  } catch {
+    return null;
+  }
+  // Expect: { picks: [{id, description}], rationale?: string }
+  if (!parsed || !Array.isArray(parsed.picks)) return null;
+
+  const byId = new Map(items.map(x => [String(x.id), x]));
+  const enriched = [];
+  for (const pick of parsed.picks.slice(0,3)){
+    const base = byId.get(String(pick.id));
+    if (!base) continue;
+    enriched.push({
+      ...base,
+      // Replace/upgrade description if GPT gave one
+      description: (pick.description && String(pick.description).trim()) || fallbackDescription(base, {budget, notes}),
+    });
+  }
+  return enriched.length ? enriched : null;
+}
+
+/* --------------------------
+   Main route
+---------------------------*/
 export async function ideasFor(req,res){
   const age    = Number(req.query.age || 0);
   const gender = norm(req.query.gender || '');
@@ -111,12 +214,9 @@ export async function ideasFor(req,res){
   live = uniqBy(live, x => x.id || (x.name||'').toLowerCase());
   dbg.steps.live_deduped = live.length;
 
-  // Progressive selection
-  let chosen = [];
-  if (live.length){
-    chosen = selectWithBudgetProgressive(live, budget, meta, 3);
-    dbg.steps.live_selected = chosen.length;
-  }
+  // Progressive selection (ensures we have candidates)
+  let chosen = selectWithBudgetProgressive(live, budget, meta, 3);
+  dbg.steps.live_selected_progressive = chosen.length;
 
   // 2) Fallback to local catalog if needed
   if (chosen.length < 3){
@@ -143,17 +243,29 @@ export async function ideasFor(req,res){
     }
   }
 
-  // 3) Still short? Try padding with closest live items under budget
-  if (chosen.length < 3 && live.length){
-    const padPool = budget ? live.filter(x => withinMax(Number(x.price_nok||0), budget)) : live;
-    const ranked = rankByClosenessToBudget(padPool, budget);
-    for (const item of ranked){
-      if (!chosen.some(x => x.id === item.id)) chosen.push(item);
-      if (chosen.length >= 3) break;
-    }
-    dbg.steps.padded = (chosen.length);
+  // 3) If GPT is configured, rerank & enrich descriptions
+  let gptUsed = false;
+  if (OPENAI_API_KEY && chosen.length){
+    try{
+      const enriched = await gptRerankAndEnrich({
+        items: chosen,
+        age, gender, budget, notes
+      });
+      if (enriched && enriched.length){
+        chosen = enriched;
+        gptUsed = true;
+      }
+    }catch{/* ignore GPT errors */}
   }
+  dbg.steps.gpt_used = gptUsed;
 
+  // 4) Final safety: fill any missing descriptions with fallbacks
+  chosen = chosen.map(it => ({
+    ...it,
+    description: fallbackDescription(it, {budget, notes})
+  }));
+
+  // 5) Always return up to 3
   const ideas = chosen.slice(0,3);
   if (debug) return res.json({ ok:true, debug: dbg, ideas });
   return res.json({ ok:true, ideas });
