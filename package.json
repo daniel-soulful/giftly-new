@@ -1,22 +1,22 @@
 {
   "name": "giftly-backend",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "type": "module",
   "description": "Giftly backend API",
   "main": "src/server.js",
   "scripts": {
     "dev": "node --watch src/server.js",
-    "sync:feeds": "node scripts/sync-feeds.js",
     "start": "node src/server.js"
   },
   "dependencies": {
     "better-sqlite3": "^9.4.3",
+    "bcryptjs": "^2.4.3",
     "cors": "^2.8.5",
     "dotenv": "^16.3.1",
     "express": "^4.18.2",
+    "jsonwebtoken": "^9.0.2",
     "node-fetch": "^3.3.2",
-    "openai": "^4.0.0",
-    "jsonwebtoken": "^9.0.2"
+    "openai": "^4.0.0"
   },
   "engines": {
     "node": "20.x"
