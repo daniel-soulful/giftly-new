@@ -1,164 +1,117 @@
+<!-- public/index.html -->
 <!doctype html>
 <html lang="en">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Giftify</title>
-  <link rel="stylesheet" href="/styles.css">
+  <title>Giftly</title>
+  <style>
+    :root { --bg:#fff; --fg:#0a0a0a; --muted:#6b7280; --brand:#0ea5e9; }
+    body { margin:0; font:16px/1.4 system-ui, -apple-system, Segoe UI, Roboto, sans-serif; background:var(--bg); color:var(--fg); }
+    .app { max-width:420px; margin:0 auto; min-height:100vh; display:flex; flex-direction:column; }
+    header { padding:16px 20px; display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #f1f5f9; }
+    header h1 { font-size:18px; margin:0; }
+    main { padding:16px 20px; }
+    .card { border:1px solid #e5e7eb; border-radius:16px; padding:14px; margin-bottom:12px; }
+    .row { display:flex; justify-content:space-between; align-items:center; gap:12px; }
+    .muted { color:var(--muted); }
+    .btn { border:none; border-radius:12px; padding:10px 14px; background:var(--brand); color:#fff; cursor:pointer; }
+    .tabs { position:sticky; bottom:0; left:0; right:0; border-top:1px solid #e5e7eb; background:#fff; display:grid; grid-template-columns:1fr 1fr 1fr; }
+    .tab { padding:10px 8px; text-align:center; color:#334155; }
+    input, select, textarea { width:100%; padding:10px 12px; border:1px solid #e5e7eb; border-radius:12px; }
+    .stack { display:flex; flex-direction:column; gap:10px; }
+  </style>
 </head>
 <body>
-<div class="phone">
-  <header>
-    <div class="back hidden" id="backBtn"></div>
-    <h1><span class="logo">Giftify</span></h1>
-  </header>
-  <main>
-    <!-- AUTH -->
-    <section id="view-auth" class="stack-16">
-      <div class="title">Welcome</div>
+  <div class="app">
+    <header>
+      <h1>Giftly</h1>
+      <span class="muted" id="status">Not logged in</span>
+    </header>
+    <main>
       <div class="card">
-        <div class="subtitle">Login</div>
-        <div class="stack-8">
-          <input id="li_email" placeholder="Email" value="demo@example.com" />
-          <input id="li_pw" placeholder="Password" type="password" value="test1234"/>
-          <button class="btn primary" id="btnLogin">Login</button>
+        <div class="stack">
+          <div class="row"><strong>Quick test</strong><span class="muted" id="api"></span></div>
+          <div class="row"><input id="email" placeholder="email" /><input id="pw" type="password" placeholder="password" /></div>
+          <div class="row">
+            <button class="btn" id="signup">Sign up</button>
+            <button class="btn" id="login">Log in</button>
+          </div>
         </div>
       </div>
+
       <div class="card">
-        <div class="subtitle">Create Account</div>
-        <div class="stack-8">
-          <input id="su_name" placeholder="Full name" />
-          <input id="su_email" placeholder="Email" />
-          <input id="su_pw" placeholder="Password" type="password" />
-          <button class="btn ghost" id="btnSignup">Create Account</button>
-          <div id="su_error" class="muted" style="color:#EF4444"></div>
+        <div class="stack">
+          <div class="row"><strong>Gift ideas</strong><span class="muted">age / gender / budget / notes</span></div>
+          <div class="row">
+            <input id="age" type="number" placeholder="30" />
+            <select id="gender">
+              <option value="">—</option>
+              <option>male</option>
+              <option>female</option>
+              <option>unisex</option>
+            </select>
+            <input id="budget" type="number" placeholder="800" />
+          </div>
+          <input id="notes" placeholder="coffee, outdoor, lego…" />
+          <button class="btn" id="ideas">View ideas</button>
+          <div id="ideasOut"></div>
         </div>
       </div>
-    </section>
+    </main>
 
-    <!-- DASHBOARD -->
-    <section id="view-dashboard" class="hidden">
-      <div class="row">
-        <div class="title">People</div>
-        <div class="muted" id="currencyBadge"></div>
-      </div>
-      <div id="people_list"></div>
-      <div class="card">
-        <div class="title">Orders</div>
-        <div id="orders_list" class="stack-8"></div>
-      </div>
-    </section>
+    <nav class="tabs">
+      <div class="tab">Dashboard</div>
+      <div class="tab">Add</div>
+      <div class="tab">Profile</div>
+    </nav>
+  </div>
 
-    <!-- ADD PERSON -->
-    <section id="view-addperson" class="hidden">
-      <div class="title">Add Person</div>
-      <div class="stack-12">
-        <input id="p_name" placeholder="Name" />
-        <label class="muted">Birthday</label>
-        <input id="p_bday" type="date" />
-        <label class="muted">Gender (optional)</label>
-        <select id="p_gender">
-          <option value="">Prefer not to say</option>
-          <option value="female">Female</option>
-          <option value="male">Male</option>
-          <option value="nonbinary">Non-binary</option>
-          <option value="other">Other</option>
-        </select>
-        <label class="muted">Budget</label>
-        <input id="p_budget" type="number" placeholder="500" />
-        <label class="muted">Notes</label>
-        <textarea id="p_notes" placeholder="Interests, sizes, likes, dislikes"></textarea>
-        <div class="row">
-          <button class="btn primary" id="btnSavePerson">Save</button>
-          <button class="btn ghost" onclick="tabNav('dashboard')">Cancel</button>
+  <script>
+    const API = location.origin;
+    const s = (sel) => document.querySelector(sel);
+    const statusEl = s('#status');
+    const apiEl = s('#api'); apiEl.textContent = API;
+
+    let token = '';
+
+    async function call(path, opts={}) {
+      const headers = { 'Content-Type': 'application/json' };
+      if (token) headers.Authorization = 'Bearer ' + token;
+      const res = await fetch(API + path, { ...opts, headers });
+      const text = await res.text();
+      try { return JSON.parse(text); } catch { throw new Error(text || res.statusText); }
+    }
+
+    s('#signup').onclick = async () => {
+      const email = s('#email').value.trim();
+      const password = s('#pw').value;
+      const j = await call('/auth/signup', { method: 'POST', body: JSON.stringify({ fullName: 'Web User', email, password }) });
+      token = j.token; statusEl.textContent = 'Signed up';
+    };
+    s('#login').onclick = async () => {
+      const email = s('#email').value.trim();
+      const password = s('#pw').value;
+      const j = await call('/auth/login', { method: 'POST', body: JSON.stringify({ email, password }) });
+      token = j.token; statusEl.textContent = 'Logged in';
+    };
+    s('#ideas').onclick = async () => {
+      const q = new URLSearchParams({
+        age: s('#age').value,
+        gender: s('#gender').value,
+        budget: s('#budget').value,
+        notes: s('#notes').value,
+      }).toString();
+      const j = await call('/ideas?' + q);
+      const out = (j.ideas || []).map(it => `
+        <div class="card">
+          <div class="row"><strong>${it.name}</strong><span class="muted">${Math.round(it.price_nok||0)} NOK</span></div>
+          ${it.image_url ? `<img src="${it.image_url}" style="width:100%;border-radius:12px;margin-top:8px">` : ''}
+          ${it.description ? `<div class="muted" style="margin-top:8px">${it.description}</div>` : ''}
         </div>
-      </div>
-    </section>
-
-    <!-- PERSON -->
-    <section id="view-person" class="hidden">
-      <div class="title" id="person_title">Person</div>
-      <div class="card stack-8">
-        <label class="muted">Name</label>
-        <input id="e_name" />
-        <label class="muted">Birthday</label>
-        <input id="e_bday" type="date" />
-        <label class="muted">Gender (optional)</label>
-        <select id="e_gender">
-          <option value="">Prefer not to say</option>
-          <option value="female">Female</option>
-          <option value="male">Male</option>
-          <option value="nonbinary">Non-binary</option>
-          <option value="other">Other</option>
-        </select>
-        <label class="muted">Budget</label>
-        <input id="e_budget" type="number" />
-        <label class="muted">Notes</label>
-        <textarea id="e_notes"></textarea>
-        <div class="row">
-          <button class="btn primary" id="btnSaveEdit">Save changes</button>
-          <button class="btn ghost" id="btnViewIdeas">View gift ideas</button>
-        </div>
-      </div>
-      <div class="card">
-        <div class="subtitle" style="margin-top:0;">Previous purchases</div>
-        <div id="person_orders" class="stack-8"></div>
-      </div>
-    </section>
-
-    <!-- GIFTS -->
-    <section id="view-gifts" class="hidden">
-      <div class="title" id="gift_title">Gift Ideas</div>
-      <div class="subtitle" id="gift_subtitle">3 curated picks</div>
-      <div id="gift_list" class="grid"></div>
-    </section>
-
-    <!-- PRODUCT -->
-    <section id="view-product" class="hidden">
-      <div class="title" id="pd_title">Product</div>
-      <img id="pd_hero" class="hero" src="/img/fallback-generic.svg" alt="Product image" />
-      <div class="thumbs" id="pd_thumbs"></div>
-      <div class="row">
-        <div class="price" id="pd_price"></div>
-        <div class="muted" id="pd_merchant"></div>
-      </div>
-      <div class="hr"></div>
-      <div class="subtitle">Description</div>
-      <div id="pd_desc" class="card"></div>
-      <div class="subtitle">Technical details</div>
-      <dl id="pd_specs" class="card" style="display:grid; grid-template-columns:120px 1fr; gap:8px;"></dl>
-      <div class="space"></div>
-      <button class="btn accent" id="pd_buy">Buy Now</button>
-    </section>
-
-    <!-- PROFILE (new) -->
-    <section id="view-profile" class="hidden">
-      <div class="title">Profile</div>
-      <div class="card stack-12">
-        <div class="row"><div class="muted">Name</div><div id="pf_name">—</div></div>
-        <div class="row"><div class="muted">Email</div><div id="pf_email">—</div></div>
-        <div class="row"><div class="muted">Currency</div><div id="pf_currency">NOK</div></div>
-        <div class="hr"></div>
-        <button class="btn danger" id="btnLogout">Log out</button>
-      </div>
-    </section>
-  </main>
-
-  <nav>
-    <button id="tab-dashboard" class="active" onclick="tabNav('dashboard')">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M3 10.5L12 3l9 7.5V21a1 1 0 0 1-1 1h-5v-7H9v7H4a1 1 0 0 1-1-1v-10.5z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
-      Dashboard
-    </button>
-    <button id="tab-create" onclick="tabNav('addperson')">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
-      Create New
-    </button>
-    <button id="tab-profile" onclick="tabNav('profile')">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M12 12a5 5 0 1 0-5-5 5 5 0 0 0 5 5Zm0 2c-5 0-9 3-9 6v2h18v-2c0-3-4-6-9-6Z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
-      Profile
-    </button>
-  </nav>
-</div>
-<script type="module" src="/app.js" defer></script>
+      `).join('') || '<div class="muted">No ideas yet.</div>';
+      s('#ideasOut').innerHTML = out;
+    };
+  </script>
 </body>
 </html>
