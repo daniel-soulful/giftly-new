@@ -1,113 +1,84 @@
 <!doctype html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <title>Giftify</title>
-  <style>
-    :root {
-      --bg: #fff;
-      --fg: #0b1220;
-      --muted: #6b7280;
-      --line: #e5e7eb;
-      --card: #ffffff;
-      --brand: #0ea5e9;      /* sky-500 */
-      --brand-ink: #0369a1;  /* sky-700 */
-      --shadow: 0 4px 20px rgba(2, 6, 23, 0.06);
-      --radius: 18px;
-    }
-    * { box-sizing: border-box; }
-    html, body { height: 100%; }
-    body {
-      margin: 0;
-      background: var(--bg);
-      color: var(--fg);
-      font: 16px/1.45 system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
-      -webkit-font-smoothing: antialiased;
-      -moz-osx-font-smoothing: grayscale;
-    }
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>Giftify</title>
+<style>
+  :root{
+    --bg:#ffffff; --ink:#0b1220; --muted:#6b7280; --line:#e5e7eb;
+    --card:#ffffff; --brand:#0ea5e9; --brand-ink:#0369a1; --ok:#16a34a; --err:#dc2626;
+    --radius:18px; --shadow:0 8px 30px rgba(2,6,23,.06);
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{
+    margin:0; background:var(--bg); color:var(--ink);
+    font:16px/1.45 system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;
+    -webkit-font-smoothing:antialiased; -moz-osx-font-smoothing:grayscale;
+  }
 
-    /* App shell */
-    .app { max-width: 430px; margin: 0 auto; min-height: 100dvh; display: grid; grid-template-rows: auto 1fr auto; }
-    header {
-      position: sticky; top: 0; z-index: 10;
-      display: flex; align-items: center; gap: 12px;
-      padding: 14px 16px; background: var(--bg); border-bottom: 1px solid var(--line);
-    }
-    .brand { color: var(--brand); font-weight: 800; letter-spacing: .2px; }
-    .back { width: 28px; height: 28px; border-radius: 999px; display: grid; place-items: center; cursor: pointer; }
-    .back::before { content: "←"; font-weight: 700; color: var(--brand-ink); }
+  /* App shell */
+  .app{max-width:430px;margin:0 auto;min-height:100dvh;display:grid;grid-template-rows:auto 1fr auto}
+  header{
+    position:sticky;top:0;z-index:10;background:var(--bg);border-bottom:1px solid var(--line);
+    display:flex;align-items:center;gap:10px;padding:14px 16px
+  }
+  .brand{color:var(--brand);font-weight:800;letter-spacing:.2px}
+  .back{width:30px;height:30px;border-radius:999px;display:grid;place-items:center;cursor:pointer}
+  .back::before{content:"←";font-weight:700;color:var(--brand-ink)}
+  .muted{color:var(--muted)}
+  main{padding:14px 14px 88px}
+  .title{font-weight:800;font-size:18px;margin:6px 2px 10px}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);padding:14px;margin:10px 2px}
+  .row{display:flex;gap:10px;align-items:center}
+  .stack{display:grid;gap:12px}
+  input,select,textarea{
+    width:100%;border:1px solid var(--line);border-radius:12px;padding:11px 12px;background:#fff;font:inherit
+  }
+  textarea{min-height:88px;resize:vertical}
+  .btn{appearance:none;border:none;border-radius:14px;padding:12px 14px;font-weight:700;cursor:pointer}
+  .btn.primary{background:var(--brand);color:#fff;box-shadow:0 10px 26px rgba(14,165,233,.25)}
+  .btn.ghost{background:#f1f5f9;color:#0f172a}
+  .btn.danger{background:var(--err);color:#fff}
 
-    main { padding: 14px 14px 88px; }
-    .section-title { font-weight: 800; margin: 8px 2px 12px; font-size: 18px; }
-    .muted { color: var(--muted); }
+  /* People list */
+  .person{display:flex;align-items:center;gap:12px;padding:10px;border:1px solid var(--line);border-radius:14px}
+  .avatar{width:42px;height:42px;border-radius:12px;background:#f0f9ff;display:grid;place-items:center;color:var(--brand-ink);font-weight:800}
+  .grow{flex:1}
+  .right{display:flex;gap:8px}
+  .pill{font-size:12px;padding:4px 8px;border-radius:999px;background:#f8fafc;border:1px solid var(--line);color:#334155}
 
-    /* Cards & inputs */
-    .card {
-      background: var(--card);
-      border: 1px solid var(--line);
-      border-radius: var(--radius);
-      box-shadow: var(--shadow);
-      padding: 12px;
-      margin: 10px 2px;
-    }
-    .row { display: flex; gap: 10px; align-items: center; }
-    .stack { display: grid; gap: 10px; }
+  /* Ideas */
+  .idea{padding:12px}
+  .idea-img{width:100%;aspect-ratio:1/1;border-radius:14px;overflow:hidden;background:#f8fafc;border:1px solid var(--line)}
+  .idea-img>img{width:100%;height:100%;object-fit:cover;display:block}
+  .idea-title{font-weight:800;margin:10px 2px 6px}
+  .idea-meta{display:flex;justify-content:space-between;color:var(--muted);font-size:14px}
+  .idea-desc{margin-top:6px;color:var(--ink);opacity:.92}
 
-    input, select, textarea {
-      width: 100%;
-      border: 1px solid var(--line);
-      border-radius: 12px;
-      padding: 10px 12px;
-      font: inherit;
-      background: #fff;
-    }
-    button.btn {
-      appearance: none; border: none;
-      background: var(--brand); color: #fff; font-weight: 700;
-      padding: 11px 14px; border-radius: 14px; cursor: pointer;
-      box-shadow: 0 6px 16px rgba(14,165,233,0.25);
-    }
-    .btn.secondary { background: #f1f5f9; color: #0f172a; box-shadow: none; }
+  /* Tabs */
+  nav.tabs{position:sticky;bottom:0;left:0;right:0;background:var(--bg);border-top:1px solid var(--line);display:grid;grid-template-columns:repeat(3,1fr)}
+  .tab{padding:12px 8px;text-align:center;color:#334155;cursor:pointer;font-weight:600}
+  .tab.active{color:var(--brand-ink);background:#f0f9ff}
 
-    /* Product card with square image */
-    .idea-card { padding: 12px; }
-    .idea-img {
-      width: 100%; aspect-ratio: 1/1; border-radius: 14px; overflow: hidden;
-      background: #f8fafc; border: 1px solid var(--line); display: block;
-    }
-    .idea-img > img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .center{display:grid;place-items:center}
+  .empty{color:var(--muted);padding:18px}
+  .hint{font-size:12px;color:var(--muted)}
+  .ok{color:var(--ok)} .err{color:var(--err)}
+  .hidden{display:none !important}
 
-    .idea-title { font-weight: 800; margin: 10px 2px 4px; }
-    .idea-meta { display: flex; justify-content: space-between; color: var(--muted); font-size: 14px; }
-    .idea-desc { color: var(--fg); opacity: .9; margin-top: 6px; }
-
-    /* Tabs */
-    nav.tabs {
-      position: sticky; bottom: 0; left: 0; right: 0;
-      display: grid; grid-template-columns: repeat(3, 1fr);
-      border-top: 1px solid var(--line); background: var(--bg);
-    }
-    .tab { padding: 12px 8px; text-align: center; color: #334155; cursor: pointer; font-weight: 600; }
-    .tab.active { color: var(--brand-ink); background: #f0f9ff; }
-
-    /* Empty state */
-    .empty { padding: 18px; text-align: left; color: var(--muted); }
-
-    /* Small helper */
-    .pill { font-size: 12px; padding: 4px 8px; border-radius: 999px; background: #f1f5f9; color: #334155; border:1px solid var(--line); }
-
-    @media (prefers-color-scheme: dark) {
-      :root { --bg: #0b1020; --fg: #e8ecf3; --card: #0f1528; --line: #1f2538; --muted:#94a3b8; --brand:#22d3ee; --brand-ink:#06b6d4; }
-      .btn.secondary { background: #111827; color: #e5e7eb; }
-      .idea-img { background:#0b1220; }
-    }
-  </style>
+  @media(prefers-color-scheme:dark){
+    :root{--bg:#0b1020;--ink:#e8ecf3;--card:#0f1528;--line:#1f2538;--muted:#94a3b8;--brand:#22d3ee;--brand-ink:#06b6d4}
+    .btn.ghost{background:#111827;color:#e5e7eb}
+    .idea-img{background:#0b1220}
+  }
+</style>
 </head>
 <body>
 <div class="app">
   <header>
-    <div class="back" id="backBtn" title="Back" style="visibility:hidden"></div>
+    <div class="back" id="backBtn" title="Back"></div>
     <div style="display:flex;flex-direction:column">
       <div class="brand">Giftify</div>
       <div class="muted" id="status">Not logged in</div>
@@ -115,55 +86,84 @@
     <div style="margin-left:auto" class="pill" id="apiHost"></div>
   </header>
 
-  <main id="screen">
-    <!-- Dashboard -->
-    <div id="view-dashboard">
-      <div class="section-title">Dashboard</div>
+  <main id="screens">
+
+    <!-- AUTH -->
+    <section id="auth" class="screen">
+      <div class="title">Welcome</div>
+      <div class="card">
+        <div class="stack">
+          <div class="row"><input id="authEmail" placeholder="you@example.com" /><input id="authPw" type="password" placeholder="password" /></div>
+          <div class="row">
+            <button class="btn primary" id="btnSignup">Create account</button>
+            <button class="btn ghost" id="btnLogin">Sign in</button>
+          </div>
+          <div class="hint">We’ll keep you signed in on this device.</div>
+          <div id="authMsg" class="hint"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- DASHBOARD -->
+    <section id="dashboard" class="screen hidden">
+      <div class="title">Dashboard</div>
       <div class="card">
         <div class="stack">
           <div class="row" style="justify-content:space-between">
-            <strong>Quick account</strong>
-            <span class="muted">Demo tools</span>
+            <strong>People</strong>
+            <button class="btn ghost" id="btnAddPerson">+ Add person</button>
           </div>
-          <div class="row">
-            <input id="email" placeholder="demo@example.com" />
-            <input id="pw" type="password" placeholder="password" />
-          </div>
-          <div class="row">
-            <button class="btn" id="signup">Create</button>
-            <button class="btn" id="login">Login</button>
-            <button class="btn secondary" id="logout">Logout</button>
-          </div>
+          <div id="peopleList"></div>
+          <div id="peopleEmpty" class="empty">No people yet. Add someone to start getting gift ideas.</div>
         </div>
       </div>
+    </section>
 
+    <!-- ADD / EDIT PERSON -->
+    <section id="personForm" class="screen hidden">
+      <div class="title" id="personTitle">Add Person</div>
       <div class="card">
-        <div class="section-title" style="margin:0 0 6px">Gift ideas</div>
         <div class="stack">
-          <div class="row">
-            <input id="age" type="number" placeholder="Age e.g. 9" />
-            <select id="gender">
-              <option value="">Gender</option>
-              <option>male</option>
-              <option>female</option>
-              <option>unisex</option>
-            </select>
-            <input id="budget" type="number" placeholder="Budget NOK" />
+          <input id="pName" placeholder="Name" />
+          <div class="row"><input id="pBirthday" type="date" /><select id="pGender">
+            <option value="">Gender (optional)</option><option>male</option><option>female</option><option>unisex</option></select>
           </div>
-          <input id="notes" placeholder="Notes (e.g. lego, outdoor, coffee)" />
+          <input id="pBudget" type="number" placeholder="Budget (NOK)" />
+          <textarea id="pNotes" placeholder="Interests, likes, dislikes, sizes… (optional)"></textarea>
           <div class="row" style="justify-content:space-between">
-            <span class="muted" id="budgetTip"></span>
-            <button class="btn" id="viewIdeas">View ideas</button>
+            <button class="btn ghost" id="btnCancelPerson">Cancel</button>
+            <button class="btn primary" id="btnSavePerson">Save</button>
           </div>
         </div>
       </div>
+    </section>
 
-      <div id="ideasList"></div>
-      <div class="empty" id="emptyIdeas" style="display:none">No ideas matched the budget window. Try adjusting budget or notes.</div>
-    </div>
+    <!-- GIFT IDEAS -->
+    <section id="ideas" class="screen hidden">
+      <div class="title" id="ideasTitle">Gift Ideas</div>
+      <div class="muted" id="ideasBudget" style="margin:0 2px 10px"></div>
+      <div id="ideasWrap"></div>
+      <div id="ideasEmpty" class="empty">No ideas matched the budget window. Try changing the budget or notes.</div>
+    </section>
+
+    <!-- PROFILE -->
+    <section id="profile" class="screen hidden">
+      <div class="title">Profile</div>
+      <div class="card">
+        <div class="stack">
+          <div><strong>Email:</strong> <span id="meEmail" class="muted">—</span></div>
+          <div class="row" style="justify-content:space-between">
+            <button class="btn ghost" id="btnRefresh">Refresh</button>
+            <button class="btn danger" id="btnLogout">Log out</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
   </main>
 
-  <nav class="tabs">
+  <!-- BOTTOM TABS -->
+  <nav class="tabs" id="tabs">
     <div class="tab active" data-tab="dashboard">🏠 Dashboard</div>
     <div class="tab" data-tab="create">＋ Create New</div>
     <div class="tab" data-tab="profile">👤 Profile</div>
@@ -174,90 +174,221 @@
 (() => {
   const API = location.origin;
   const $ = sel => document.querySelector(sel);
-  const on = (el, ev, fn) => el && el.addEventListener(ev, fn);
-  const statusEl = $('#status'), hostEl = $('#apiHost'), ideasWrap = $('#ideasList'), emptyIdeas = $('#emptyIdeas');
+  const show = id => document.querySelectorAll('.screen').forEach(el => el.classList.toggle('hidden', el.id !== id));
+  const tabsEl = $('#tabs'), backBtn = $('#backBtn'), statusEl = $('#status'), hostEl = $('#apiHost');
   hostEl.textContent = new URL(API).host;
 
-  let token = '';
-  const setStatus = (txt) => statusEl.textContent = txt;
+  // simple state
+  let token = localStorage.getItem('jwt') || '';
+  let me = token ? { email: localStorage.getItem('email') || '' } : null;
+  let editingId = null; // person id when editing
 
-  async function call(path, opts = {}) {
+  // local "people" store
+  const PEOP_KEY = 'giftify_people';
+  const people = {
+    list(){ try { return JSON.parse(localStorage.getItem(PEOP_KEY)||'[]'); } catch { return []; } },
+    save(arr){ localStorage.setItem(PEOP_KEY, JSON.stringify(arr)); }
+  };
+
+  // helpers
+  async function call(path, opts={}){
     const headers = { 'Content-Type': 'application/json' };
-    if (token) headers.Authorization = 'Bearer ' + token;
-    const res = await fetch(API + path, { ...opts, headers });
+    if (token) headers.Authorization = 'Bearer '+token;
+    const res = await fetch(API+path, { ...opts, headers });
     const text = await res.text();
-    try { return JSON.parse(text); } catch { throw new Error(text || res.statusText); }
+    try { return JSON.parse(text); } catch(e){ throw new Error(text || res.statusText); }
+  }
+  const fmtDate = iso => {
+    try { if (!iso) return ''; const d = new Date(iso); return d.toLocaleDateString(); } catch { return iso || ''; }
+  };
+
+  // UI control
+  function setAuthedUI(authed){
+    $('#auth').classList.toggle('hidden', authed);
+    tabsEl.classList.toggle('hidden', !authed);
+    backBtn.style.visibility = authed ? 'hidden' : 'hidden';
+    statusEl.textContent = authed ? 'Signed in' : 'Not logged in';
+    if (authed) { show('dashboard'); renderPeople(); }
+    else { show('auth'); }
   }
 
-  // Auth actions
-  on($('#signup'), 'click', async () => {
-    const email = $('#email').value.trim() || 'demo+' + Math.random().toString(36).slice(2) + '@example.com';
-    const password = $('#pw').value || 'demo1234';
-    const j = await call('/auth/signup', { method:'POST', body: JSON.stringify({ fullName: 'Web User', email, password }) });
-    token = j.token || ''; setStatus('Signed up'); alert('Signed up as ' + j.user?.email);
-  });
-  on($('#login'), 'click', async () => {
-    const email = $('#email').value.trim(); const password = $('#pw').value;
-    const j = await call('/auth/login', { method:'POST', body: JSON.stringify({ email, password }) });
-    token = j.token || ''; setStatus('Logged in'); alert('Logged in');
-  });
-  on($('#logout'), 'click', () => { token = ''; setStatus('Not logged in'); });
-
-  // Ideas
-  function asInt(v) { const n = Number(v); return Number.isFinite(n) ? n : 0; }
-
-  function renderIdeas(list) {
-    ideasWrap.innerHTML = '';
-    emptyIdeas.style.display = list.length ? 'none' : 'block';
-    for (const it of list) {
-      const price = Math.round(it.price_nok || 0);
-      const merchant = it.merchant_name ? `<span class="muted">${it.merchant_name}</span>` : '';
-      const desc = it.description ? `<div class="idea-desc">${it.description}</div>` : '';
-      const img = it.image_url ? `<div class="idea-img"><img src="${it.image_url}" loading="lazy" alt=""></div>` : '';
-      const card = document.createElement('div');
-      card.className = 'card idea-card';
-      card.innerHTML = `
-        ${img}
-        <div class="idea-title">${it.name || 'Product'}</div>
-        <div class="idea-meta">
-          <strong>${price ? price + ' NOK' : ''}</strong>
-          ${merchant}
+  function renderPeople(){
+    const arr = people.list();
+    const listEl = $('#peopleList');
+    listEl.innerHTML = '';
+    $('#peopleEmpty').style.display = arr.length ? 'none' : 'block';
+    for (const p of arr){
+      const el = document.createElement('div');
+      el.className = 'person';
+      el.innerHTML = `
+        <div class="avatar">${(p.name||'?').slice(0,1).toUpperCase()}</div>
+        <div class="grow">
+          <div style="font-weight:800">${p.name}</div>
+          <div class="muted">Birthday ${fmtDate(p.birthdate)}</div>
         </div>
-        ${desc}
+        <div class="right">
+          <button class="btn ghost" data-act="ideas">Ideas</button>
+          <button class="btn ghost" data-act="edit">Edit</button>
+        </div>
       `;
-      ideasWrap.appendChild(card);
+      el.querySelector('[data-act="ideas"]').onclick = () => openIdeas(p);
+      el.querySelector('[data-act="edit"]').onclick = () => openEdit(p);
+      listEl.appendChild(el);
     }
   }
 
-  on($('#viewIdeas'), 'click', async () => {
-    const age = asInt($('#age').value);
-    const gender = $('#gender').value;
-    const budget = asInt($('#budget').value);
-    const notes = $('#notes').value.trim();
-    $('#budgetTip').textContent = budget ? `Target: ${Math.floor(budget*0.9)}–${budget} NOK` : '';
+  function openAdd(){
+    editingId = null;
+    $('#personTitle').textContent = 'Add Person';
+    $('#pName').value = '';
+    $('#pBirthday').valueAsDate = null;
+    $('#pGender').value = '';
+    $('#pBudget').value = '';
+    $('#pNotes').value = '';
+    backBtn.style.visibility = 'visible';
+    show('personForm'); tabsEl.classList.add('hidden');
+  }
+  function openEdit(p){
+    editingId = p.id;
+    $('#personTitle').textContent = 'Edit Person';
+    $('#pName').value = p.name || '';
+    $('#pBirthday').value = p.birthdate ? new Date(p.birthdate).toISOString().slice(0,10) : '';
+    $('#pGender').value = p.gender || '';
+    $('#pBudget').value = p.budget || '';
+    $('#pNotes').value = p.notes || '';
+    backBtn.style.visibility = 'visible';
+    show('personForm'); tabsEl.classList.add('hidden');
+  }
 
-    ideasWrap.innerHTML = '';
-    emptyIdeas.style.display = 'none';
+  async function openIdeas(p){
+    const age = p.birthdate ? Math.max(0, Math.floor((Date.now()-new Date(p.birthdate).getTime())/31557600000)) : 0;
+    $('#ideasTitle').textContent = `Gift Ideas for ${p.name || ''}`;
+    $('#ideasBudget').textContent = p.budget ? `Budget ${p.budget} NOK` : 'No budget set';
+    $('#ideasWrap').innerHTML = '';
+    $('#ideasEmpty').style.display = 'none';
 
-    try {
-      const q = new URLSearchParams({ age, gender, budget, notes }).toString();
-      const j = await call('/ideas?' + q);
-      renderIdeas(j.ideas || []);
-    } catch (e) {
-      emptyIdeas.style.display = 'block';
-      emptyIdeas.textContent = 'Failed to load ideas: ' + e.message;
+    backBtn.style.visibility = 'visible';
+    show('ideas'); tabsEl.classList.add('hidden');
+
+    try{
+      const q = new URLSearchParams({
+        age: age || 0,
+        gender: p.gender || '',
+        budget: p.budget || 0,
+        notes: p.notes || ''
+      }).toString();
+      const j = await call('/ideas?'+q);
+      const ideas = Array.isArray(j.ideas) ? j.ideas : [];
+      renderIdeas(ideas);
+    }catch(e){
+      $('#ideasWrap').innerHTML = '';
+      $('#ideasEmpty').style.display = 'block';
+      $('#ideasEmpty').textContent = 'Failed to load ideas: '+e.message;
     }
-  });
+  }
 
-  // Tabs (placeholders for now)
+  function renderIdeas(list){
+    const wrap = $('#ideasWrap');
+    wrap.innerHTML = '';
+    if (!list.length){ $('#ideasEmpty').style.display = 'block'; return; }
+    $('#ideasEmpty').style.display = 'none';
+
+    for (const it of list){
+      const price = Math.round(it.price_nok||0);
+      const card = document.createElement('div');
+      card.className = 'card idea';
+      card.innerHTML = `
+        <div class="idea-img">${it.image_url ? `<img src="${it.image_url}" loading="lazy" alt="">` : ''}</div>
+        <div class="idea-title">${it.name||'Product'}</div>
+        <div class="idea-meta">
+          <strong>${price ? price+' NOK' : ''}</strong>
+          <span class="muted">${it.merchant_name||''}</span>
+        </div>
+        ${it.description ? `<div class="idea-desc">${it.description}</div>` : ''}
+      `;
+      wrap.appendChild(card);
+    }
+  }
+
+  // Save / Cancel person
+  $('#btnSavePerson').onclick = () => {
+    const name = $('#pName').value.trim();
+    const birthdate = $('#pBirthday').value || '';
+    const gender = $('#pGender').value || '';
+    const budget = Number($('#pBudget').value || 0);
+    const notes = $('#pNotes').value.trim();
+
+    if (!name || !birthdate){
+      alert('Please enter name and birthday'); return;
+    }
+    const arr = people.list();
+    if (editingId){
+      const i = arr.findIndex(x => x.id === editingId);
+      if (i>=0) arr[i] = { ...arr[i], name, birthdate, gender, budget, notes };
+    } else {
+      const id = Date.now();
+      arr.unshift({ id, name, birthdate, gender, budget, notes });
+    }
+    people.save(arr);
+    backToDashboard();
+  };
+  $('#btnCancelPerson').onclick = backToDashboard;
+
+  function backToDashboard(){
+    show('dashboard'); tabsEl.classList.remove('hidden'); backBtn.style.visibility = 'hidden'; renderPeople();
+  }
+  backBtn.onclick = () => {
+    const current = [...document.querySelectorAll('.screen')].find(el => !el.classList.contains('hidden'));
+    if (current && (current.id === 'ideas' || current.id === 'personForm')) backToDashboard();
+  };
+
+  // Tabs
   document.querySelectorAll('.tab').forEach(tab => {
     tab.addEventListener('click', () => {
       document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
       tab.classList.add('active');
-      // Keeping single-screen prototype; could swap views here.
+
+      if (tab.dataset.tab === 'dashboard'){ show('dashboard'); tabsEl.classList.remove('hidden'); backBtn.style.visibility = 'hidden'; }
+      if (tab.dataset.tab === 'create'){ openAdd(); }
+      if (tab.dataset.tab === 'profile'){ show('profile'); tabsEl.classList.remove('hidden'); backBtn.style.visibility = 'hidden'; $('#meEmail').textContent = me?.email || '—'; }
     });
   });
 
+  // Auth
+  $('#btnSignup').onclick = async () => {
+    const email = $('#authEmail').value.trim() || `demo+${Math.random().toString(36).slice(2)}@example.com`;
+    const password = $('#authPw').value || 'demo1234';
+    try{
+      const j = await call('/auth/signup',{method:'POST',body:JSON.stringify({fullName:'Web User',email,password})});
+      token = j.token || ''; me = { email: j.user?.email || email };
+      localStorage.setItem('jwt', token); localStorage.setItem('email', me.email);
+      $('#authMsg').innerHTML = '<span class="ok">Account created</span>';
+      setAuthedUI(true);
+    }catch(e){
+      $('#authMsg').innerHTML = '<span class="err">'+e.message+'</span>';
+    }
+  };
+  $('#btnLogin').onclick = async () => {
+    const email = $('#authEmail').value.trim(); const password = $('#authPw').value;
+    try{
+      const j = await call('/auth/login',{method:'POST',body:JSON.stringify({email,password})});
+      token = j.token || ''; me = { email: j.user?.email || email };
+      localStorage.setItem('jwt', token); localStorage.setItem('email', me.email);
+      $('#authMsg').innerHTML = '<span class="ok">Signed in</span>';
+      setAuthedUI(true);
+    }catch(e){
+      $('#authMsg').innerHTML = '<span class="err">'+e.message+'</span>';
+    }
+  };
+  $('#btnLogout').onclick = () => {
+    token = ''; me = null; localStorage.removeItem('jwt'); localStorage.removeItem('email');
+    setAuthedUI(false);
+  };
+  $('#btnAddPerson').onclick = openAdd;
+  $('#btnRefresh').onclick = () => location.reload();
+
+  // boot
+  setAuthedUI(!!token);
 })();
 </script>
 </body>
