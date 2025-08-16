@@ -12,18 +12,9 @@
   }
   *{box-sizing:border-box}
   html,body{height:100%}
-  body{
-    margin:0; background:var(--bg); color:var(--ink);
-    font:16px/1.45 system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;
-    -webkit-font-smoothing:antialiased; -moz-osx-font-smoothing:grayscale;
-  }
-
-  /* App shell */
+  body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.45 system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif}
   .app{max-width:430px;margin:0 auto;min-height:100dvh;display:grid;grid-template-rows:auto 1fr auto}
-  header{
-    position:sticky;top:0;z-index:10;background:var(--bg);border-bottom:1px solid var(--line);
-    display:flex;align-items:center;gap:10px;padding:14px 16px
-  }
+  header{position:sticky;top:0;z-index:10;background:var(--bg);border-bottom:1px solid var(--line);display:flex;align-items:center;gap:10px;padding:14px 16px}
   .brand{color:var(--brand);font-weight:800;letter-spacing:.2px}
   .back{width:30px;height:30px;border-radius:999px;display:grid;place-items:center;cursor:pointer}
   .back::before{content:"←";font-weight:700;color:var(--brand-ink)}
@@ -33,45 +24,40 @@
   .card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);padding:14px;margin:10px 2px}
   .row{display:flex;gap:10px;align-items:center}
   .stack{display:grid;gap:12px}
-  input,select,textarea{
-    width:100%;border:1px solid var(--line);border-radius:12px;padding:11px 12px;background:#fff;font:inherit
-  }
+  input,select,textarea{width:100%;border:1px solid var(--line);border-radius:12px;padding:11px 12px;background:#fff;font:inherit}
   textarea{min-height:88px;resize:vertical}
   .btn{appearance:none;border:none;border-radius:14px;padding:12px 14px;font-weight:700;cursor:pointer}
   .btn.primary{background:var(--brand);color:#fff;box-shadow:0 10px 26px rgba(14,165,233,.25)}
   .btn.ghost{background:#f1f5f9;color:#0f172a}
   .btn.danger{background:var(--err);color:#fff}
-
-  /* People list */
-  .person{display:flex;align-items:center;gap:12px;padding:10px;border:1px solid var(--line);border-radius:14px}
+  .person{display:flex;align-items:center;gap:12px;padding:10px;border:1px solid var(--line);border-radius:14px;cursor:pointer}
   .avatar{width:42px;height:42px;border-radius:12px;background:#f0f9ff;display:grid;place-items:center;color:var(--brand-ink);font-weight:800}
   .grow{flex:1}
   .right{display:flex;gap:8px}
   .pill{font-size:12px;padding:4px 8px;border-radius:999px;background:#f8fafc;border:1px solid var(--line);color:#334155}
-
-  /* Ideas */
-  .idea{padding:12px}
+  .idea{padding:12px;cursor:pointer}
   .idea-img{width:100%;aspect-ratio:1/1;border-radius:14px;overflow:hidden;background:#f8fafc;border:1px solid var(--line)}
   .idea-img>img{width:100%;height:100%;object-fit:cover;display:block}
   .idea-title{font-weight:800;margin:10px 2px 6px}
   .idea-meta{display:flex;justify-content:space-between;color:var(--muted);font-size:14px}
   .idea-desc{margin-top:6px;color:var(--ink);opacity:.92}
-
-  /* Tabs */
+  /* Product detail */
+  .pd-hero{width:100%;aspect-ratio:1/1;border-radius:18px;overflow:hidden;background:#f8fafc;border:1px solid var(--line)}
+  .pd-hero>img{width:100%;height:100%;object-fit:cover;display:block}
+  .pd-title{font-weight:800;font-size:20px;margin-top:10px}
+  .pd-meta{display:flex;justify-content:space-between;align-items:center;color:#334155;margin-top:6px}
+  .pd-desc{margin-top:10px}
   nav.tabs{position:sticky;bottom:0;left:0;right:0;background:var(--bg);border-top:1px solid var(--line);display:grid;grid-template-columns:repeat(3,1fr)}
   .tab{padding:12px 8px;text-align:center;color:#334155;cursor:pointer;font-weight:600}
   .tab.active{color:var(--brand-ink);background:#f0f9ff}
-
-  .center{display:grid;place-items:center}
   .empty{color:var(--muted);padding:18px}
   .hint{font-size:12px;color:var(--muted)}
   .ok{color:var(--ok)} .err{color:var(--err)}
   .hidden{display:none !important}
-
   @media(prefers-color-scheme:dark){
     :root{--bg:#0b1020;--ink:#e8ecf3;--card:#0f1528;--line:#1f2538;--muted:#94a3b8;--brand:#22d3ee;--brand-ink:#06b6d4}
     .btn.ghost{background:#111827;color:#e5e7eb}
-    .idea-img{background:#0b1220}
+    .idea-img,.pd-hero{background:#0b1220}
   }
 </style>
 </head>
@@ -87,17 +73,13 @@
   </header>
 
   <main id="screens">
-
     <!-- AUTH -->
     <section id="auth" class="screen">
       <div class="title">Welcome</div>
       <div class="card">
         <div class="stack">
           <div class="row"><input id="authEmail" placeholder="you@example.com" /><input id="authPw" type="password" placeholder="password" /></div>
-          <div class="row">
-            <button class="btn primary" id="btnSignup">Create account</button>
-            <button class="btn ghost" id="btnLogin">Sign in</button>
-          </div>
+          <div class="row"><button class="btn primary" id="btnSignup">Create account</button><button class="btn ghost" id="btnLogin">Sign in</button></div>
           <div class="hint">We’ll keep you signed in on this device.</div>
           <div id="authMsg" class="hint"></div>
         </div>
@@ -146,6 +128,24 @@
       <div id="ideasEmpty" class="empty">No ideas matched the budget window. Try changing the budget or notes.</div>
     </section>
 
+    <!-- PRODUCT DETAIL -->
+    <section id="productDetail" class="screen hidden">
+      <div class="title" id="pdTitle">Product</div>
+      <div class="card">
+        <div class="pd-hero" id="pdHero"></div>
+        <div class="pd-title" id="pdName"></div>
+        <div class="pd-meta">
+          <strong id="pdPrice"></strong>
+          <span class="muted" id="pdMerchant"></span>
+        </div>
+        <div class="pd-desc" id="pdDesc"></div>
+        <div id="pdSpecs" class="stack" style="margin-top:10px"></div>
+        <div class="row" style="justify-content:flex-end;margin-top:12px">
+          <button class="btn primary" id="pdBuy">Buy now</button>
+        </div>
+      </div>
+    </section>
+
     <!-- PROFILE -->
     <section id="profile" class="screen hidden">
       <div class="title">Profile</div>
@@ -159,7 +159,6 @@
         </div>
       </div>
     </section>
-
   </main>
 
   <!-- BOTTOM TABS -->
@@ -173,81 +172,66 @@
 <script>
 (() => {
   const API = location.origin;
-  const $ = sel => document.querySelector(sel);
+  const $ = s => document.querySelector(s);
   const show = id => document.querySelectorAll('.screen').forEach(el => el.classList.toggle('hidden', el.id !== id));
   const tabsEl = $('#tabs'), backBtn = $('#backBtn'), statusEl = $('#status'), hostEl = $('#apiHost');
   hostEl.textContent = new URL(API).host;
 
-  // simple state
   let token = localStorage.getItem('jwt') || '';
   let me = token ? { email: localStorage.getItem('email') || '' } : null;
-  let editingId = null; // person id when editing
+  let editingId = null;
+  let currentIdeas = [];
+  let selectedProduct = null;
 
-  // local "people" store
   const PEOP_KEY = 'giftify_people';
   const people = {
     list(){ try { return JSON.parse(localStorage.getItem(PEOP_KEY)||'[]'); } catch { return []; } },
     save(arr){ localStorage.setItem(PEOP_KEY, JSON.stringify(arr)); }
   };
 
-  // helpers
   async function call(path, opts={}){
     const headers = { 'Content-Type': 'application/json' };
     if (token) headers.Authorization = 'Bearer '+token;
     const res = await fetch(API+path, { ...opts, headers });
-    const text = await res.text();
-    try { return JSON.parse(text); } catch(e){ throw new Error(text || res.statusText); }
+    const txt = await res.text(); try { return JSON.parse(txt) } catch { throw new Error(txt || res.statusText) }
   }
-  const fmtDate = iso => {
-    try { if (!iso) return ''; const d = new Date(iso); return d.toLocaleDateString(); } catch { return iso || ''; }
-  };
+  const fmtDate = iso => { try { if(!iso) return ''; const d = new Date(iso); return d.toLocaleDateString(); } catch { return iso || '' } };
 
-  // UI control
   function setAuthedUI(authed){
     $('#auth').classList.toggle('hidden', authed);
     tabsEl.classList.toggle('hidden', !authed);
-    backBtn.style.visibility = authed ? 'hidden' : 'hidden';
+    backBtn.style.visibility = 'hidden';
     statusEl.textContent = authed ? 'Signed in' : 'Not logged in';
-    if (authed) { show('dashboard'); renderPeople(); }
-    else { show('auth'); }
+    if (authed) { show('dashboard'); renderPeople(); } else { show('auth'); }
   }
 
   function renderPeople(){
     const arr = people.list();
-    const listEl = $('#peopleList');
-    listEl.innerHTML = '';
+    const listEl = $('#peopleList'); listEl.innerHTML = '';
     $('#peopleEmpty').style.display = arr.length ? 'none' : 'block';
     for (const p of arr){
-      const el = document.createElement('div');
-      el.className = 'person';
-      el.innerHTML = `
+      const row = document.createElement('div');
+      row.className = 'person';
+      row.innerHTML = `
         <div class="avatar">${(p.name||'?').slice(0,1).toUpperCase()}</div>
         <div class="grow">
           <div style="font-weight:800">${p.name}</div>
           <div class="muted">Birthday ${fmtDate(p.birthdate)}</div>
         </div>
-        <div class="right">
-          <button class="btn ghost" data-act="ideas">Ideas</button>
-          <button class="btn ghost" data-act="edit">Edit</button>
-        </div>
+        <div class="right"><span class="pill">${p.budget? p.budget+' NOK':''}</span></div>
       `;
-      el.querySelector('[data-act="ideas"]').onclick = () => openIdeas(p);
-      el.querySelector('[data-act="edit"]').onclick = () => openEdit(p);
-      listEl.appendChild(el);
+      row.onclick = () => openIdeas(p);
+      listEl.appendChild(row);
     }
   }
 
   function openAdd(){
     editingId = null;
     $('#personTitle').textContent = 'Add Person';
-    $('#pName').value = '';
-    $('#pBirthday').valueAsDate = null;
-    $('#pGender').value = '';
-    $('#pBudget').value = '';
-    $('#pNotes').value = '';
-    backBtn.style.visibility = 'visible';
-    show('personForm'); tabsEl.classList.add('hidden');
+    $('#pName').value = ''; $('#pBirthday').value = ''; $('#pGender').value = ''; $('#pBudget').value = ''; $('#pNotes').value = '';
+    show('personForm'); tabsEl.classList.add('hidden'); backBtn.style.visibility = 'visible';
   }
+
   function openEdit(p){
     editingId = p.id;
     $('#personTitle').textContent = 'Edit Person';
@@ -256,43 +240,29 @@
     $('#pGender').value = p.gender || '';
     $('#pBudget').value = p.budget || '';
     $('#pNotes').value = p.notes || '';
-    backBtn.style.visibility = 'visible';
-    show('personForm'); tabsEl.classList.add('hidden');
+    show('personForm'); tabsEl.classList.add('hidden'); backBtn.style.visibility = 'visible';
   }
 
   async function openIdeas(p){
     const age = p.birthdate ? Math.max(0, Math.floor((Date.now()-new Date(p.birthdate).getTime())/31557600000)) : 0;
     $('#ideasTitle').textContent = `Gift Ideas for ${p.name || ''}`;
     $('#ideasBudget').textContent = p.budget ? `Budget ${p.budget} NOK` : 'No budget set';
-    $('#ideasWrap').innerHTML = '';
-    $('#ideasEmpty').style.display = 'none';
-
-    backBtn.style.visibility = 'visible';
-    show('ideas'); tabsEl.classList.add('hidden');
-
+    $('#ideasWrap').innerHTML = ''; $('#ideasEmpty').style.display = 'none';
+    show('ideas'); tabsEl.classList.add('hidden'); backBtn.style.visibility = 'visible';
     try{
-      const q = new URLSearchParams({
-        age: age || 0,
-        gender: p.gender || '',
-        budget: p.budget || 0,
-        notes: p.notes || ''
-      }).toString();
+      const q = new URLSearchParams({ age: age||0, gender: p.gender||'', budget: p.budget||0, notes: p.notes||'' }).toString();
       const j = await call('/ideas?'+q);
-      const ideas = Array.isArray(j.ideas) ? j.ideas : [];
-      renderIdeas(ideas);
+      currentIdeas = Array.isArray(j.ideas)? j.ideas : [];
+      renderIdeas(currentIdeas);
     }catch(e){
-      $('#ideasWrap').innerHTML = '';
-      $('#ideasEmpty').style.display = 'block';
-      $('#ideasEmpty').textContent = 'Failed to load ideas: '+e.message;
+      $('#ideasWrap').innerHTML = ''; $('#ideasEmpty').style.display = 'block'; $('#ideasEmpty').textContent = 'Failed to load ideas: '+e.message;
     }
   }
 
   function renderIdeas(list){
-    const wrap = $('#ideasWrap');
-    wrap.innerHTML = '';
+    const wrap = $('#ideasWrap'); wrap.innerHTML = '';
     if (!list.length){ $('#ideasEmpty').style.display = 'block'; return; }
     $('#ideasEmpty').style.display = 'none';
-
     for (const it of list){
       const price = Math.round(it.price_nok||0);
       const card = document.createElement('div');
@@ -306,9 +276,31 @@
         </div>
         ${it.description ? `<div class="idea-desc">${it.description}</div>` : ''}
       `;
+      card.onclick = () => openProduct(it);
       wrap.appendChild(card);
     }
   }
+
+  function openProduct(item){
+    selectedProduct = item;
+    $('#pdTitle').textContent = 'Product';
+    $('#pdHero').innerHTML = item.image_url ? `<img src="${item.image_url}" alt="">` : '';
+    $('#pdName').textContent = item.name || 'Product';
+    $('#pdPrice').textContent = Math.round(item.price_nok||0) ? Math.round(item.price_nok)+' NOK' : '';
+    $('#pdMerchant').textContent = item.merchant_name || '';
+    $('#pdDesc').textContent = item.description || '';
+    const specs = Array.isArray(item.specs) ? item.specs : [];
+    $('#pdSpecs').innerHTML = specs.length ? specs.map(s => `<div class="row" style="justify-content:space-between"><span class="muted">${s.key}</span><strong>${s.value}</strong></div>`).join('') : '';
+    show('productDetail'); tabsEl.classList.add('hidden'); backBtn.style.visibility = 'visible';
+  }
+
+  $('#pdBuy').onclick = () => {
+    // Mock checkout for now
+    alert('Order placed ✅\n\nThis is a test checkout. We will integrate a real provider later.');
+    // Optional: you could POST /orders here if you wire it on the backend
+    // Then go back to Ideas
+    show('ideas'); tabsEl.classList.add('hidden'); backBtn.style.visibility = 'visible';
+  };
 
   // Save / Cancel person
   $('#btnSavePerson').onclick = () => {
@@ -317,10 +309,7 @@
     const gender = $('#pGender').value || '';
     const budget = Number($('#pBudget').value || 0);
     const notes = $('#pNotes').value.trim();
-
-    if (!name || !birthdate){
-      alert('Please enter name and birthday'); return;
-    }
+    if (!name || !birthdate){ alert('Please enter name and birthday'); return; }
     const arr = people.list();
     if (editingId){
       const i = arr.findIndex(x => x.id === editingId);
@@ -334,12 +323,14 @@
   };
   $('#btnCancelPerson').onclick = backToDashboard;
 
-  function backToDashboard(){
-    show('dashboard'); tabsEl.classList.remove('hidden'); backBtn.style.visibility = 'hidden'; renderPeople();
-  }
+  function backToDashboard(){ show('dashboard'); tabsEl.classList.remove('hidden'); backBtn.style.visibility = 'hidden'; renderPeople(); }
+
   backBtn.onclick = () => {
     const current = [...document.querySelectorAll('.screen')].find(el => !el.classList.contains('hidden'));
-    if (current && (current.id === 'ideas' || current.id === 'personForm')) backToDashboard();
+    if (!current) return;
+    if (current.id === 'productDetail') { show('ideas'); tabsEl.classList.add('hidden'); backBtn.style.visibility = 'visible'; return; }
+    if (current.id === 'ideas' || current.id === 'personForm') { backToDashboard(); return; }
+    if (current.id === 'auth') return;
   };
 
   // Tabs
@@ -347,7 +338,6 @@
     tab.addEventListener('click', () => {
       document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
       tab.classList.add('active');
-
       if (tab.dataset.tab === 'dashboard'){ show('dashboard'); tabsEl.classList.remove('hidden'); backBtn.style.visibility = 'hidden'; }
       if (tab.dataset.tab === 'create'){ openAdd(); }
       if (tab.dataset.tab === 'profile'){ show('profile'); tabsEl.classList.remove('hidden'); backBtn.style.visibility = 'hidden'; $('#meEmail').textContent = me?.email || '—'; }
@@ -360,30 +350,19 @@
     const password = $('#authPw').value || 'demo1234';
     try{
       const j = await call('/auth/signup',{method:'POST',body:JSON.stringify({fullName:'Web User',email,password})});
-      token = j.token || ''; me = { email: j.user?.email || email };
-      localStorage.setItem('jwt', token); localStorage.setItem('email', me.email);
-      $('#authMsg').innerHTML = '<span class="ok">Account created</span>';
-      setAuthedUI(true);
-    }catch(e){
-      $('#authMsg').innerHTML = '<span class="err">'+e.message+'</span>';
-    }
+      token = j.token || ''; me = { email: j.user?.email || email }; localStorage.setItem('jwt', token); localStorage.setItem('email', me.email);
+      $('#authMsg').innerHTML = '<span class="ok">Account created</span>'; setAuthedUI(true);
+    }catch(e){ $('#authMsg').innerHTML = '<span class="err">'+e.message+'</span>'; }
   };
   $('#btnLogin').onclick = async () => {
     const email = $('#authEmail').value.trim(); const password = $('#authPw').value;
     try{
       const j = await call('/auth/login',{method:'POST',body:JSON.stringify({email,password})});
-      token = j.token || ''; me = { email: j.user?.email || email };
-      localStorage.setItem('jwt', token); localStorage.setItem('email', me.email);
-      $('#authMsg').innerHTML = '<span class="ok">Signed in</span>';
-      setAuthedUI(true);
-    }catch(e){
-      $('#authMsg').innerHTML = '<span class="err">'+e.message+'</span>';
-    }
+      token = j.token || ''; me = { email: j.user?.email || email }; localStorage.setItem('jwt', token); localStorage.setItem('email', me.email);
+      $('#authMsg').innerHTML = '<span class="ok">Signed in</span>'; setAuthedUI(true);
+    }catch(e){ $('#authMsg').innerHTML = '<span class="err">'+e.message+'</span>'; }
   };
-  $('#btnLogout').onclick = () => {
-    token = ''; me = null; localStorage.removeItem('jwt'); localStorage.removeItem('email');
-    setAuthedUI(false);
-  };
+  $('#btnLogout').onclick = () => { token = ''; me = null; localStorage.removeItem('jwt'); localStorage.removeItem('email'); setAuthedUI(false); };
   $('#btnAddPerson').onclick = openAdd;
   $('#btnRefresh').onclick = () => location.reload();
 
