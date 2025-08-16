@@ -3,179 +3,193 @@ import fetch from 'node-fetch';
 
 const SERPAPI_KEY = process.env.SERPAPI_KEY || '';
 
-/* -----------------------------
-   Query building
------------------------------- */
-function buildQuery({ age, gender, budget, notes }){
+/**
+ * Build a search query from age/gender/notes/budget.
+ * Keep it short and product-y so Shopping results stay relevant.
+ */
+function buildQuery({ age, gender, notes, budget }) {
   const parts = [];
+
+  // notes first (user intent)
   if (notes) parts.push(notes);
-  if (age) {
-    if (age <= 6) parts.push('gifts for kids');
-    else if (age <= 12) parts.push('gifts for children');
-    else if (age <= 17) parts.push('gifts for teenager');
-    else parts.push('gifts for adults');
-  }
-  if (gender) parts.push(gender);
-  if (budget) parts.push(`under ${budget} NOK`);
-  return parts.join(' ').trim() || 'gift ideas';
+
+  // age hints
+  const nAge = Number(age || 0);
+  if (nAge > 0 && nAge <= 12) parts.push('barn');        // Norwegian: kids
+  else if (nAge > 12 && nAge <= 17) parts.push('ungdom'); // teens
+
+  // gender (soft signal; Shopping is product-oriented)
+  if (gender && /^(male|female)$/i.test(gender)) parts.push(gender.toLowerCase());
+
+  // budget hint (not hard filtered by Shopping, but helps query)
+  if (Number(budget || 0) > 0) parts.push('gave');
+
+  // fallback
+  if (!parts.length) parts.push('gave ideer');
+
+  return parts.join(' ').trim();
 }
 
-/* -----------------------------
-   Price parsing (NOK)
------------------------------- */
-function parseNokPrice(it){
-  if (typeof it.extracted_price === 'number' && isFinite(it.extracted_price)) {
-    return Math.round(it.extracted_price);
+/**
+ * Try to parse NOK price strings like:
+ *  - "459 kr", "kr 459", "459,00 NOK", "NOK 459", "459.00 kr"
+ *  - we accept other currencies but prefer/assume NOK context (gl=no)
+ */
+function parseNokPrice(input) {
+  if (!input) return 0;
+  const s = String(input).replace(/\s+/g, ' ').trim();
+
+  // if string holds multiple price formats, take first number-ish sequence
+  const m = s.match(/[\d\.,]+/);
+  if (!m) return 0;
+
+  // normalize 1.234,56 -> 1234.56 (assume comma as decimal if both appear)
+  let num = m[0];
+  const hasDot = num.includes('.');
+  const hasComma = num.includes(',');
+
+  if (hasDot && hasComma) {
+    // Heuristics: in Europe 1.234,56 => thousands '.' decimal ','
+    num = num.replace(/\./g, '').replace(',', '.');
+  } else if (hasComma && !hasDot) {
+    // 459,00 => 459.00
+    num = num.replace(',', '.');
+  } else {
+    // 459 or 459.00 => as is
   }
 
-  const candidates = [];
-  if (it.price) candidates.push(String(it.price));
-  if (it.extracted_price) candidates.push(String(it.extracted_price));
-  if (Array.isArray(it.prices)) {
-    for (const p of it.prices) {
-      if (p?.extracted_price) candidates.push(String(p.extracted_price));
-      if (p?.price) candidates.push(String(p.price));
+  const n = Number(num);
+  return Number.isFinite(n) ? n : 0;
+}
+
+/**
+ * Pick a higher-res image when possible.
+ * - Prefer product images array
+ * - Fall back to `thumbnail` / single image
+ * - Clean Google proxy params like "=w300-h300"
+ */
+function bestImage(item) {
+  const imgCandidates = [];
+
+  // SerpAPI Google Shopping fields vary; collect possibilities
+  if (Array.isArray(item.product_images)) {
+    for (const im of item.product_images) {
+      if (im && (im.link || im.thumbnail)) imgCandidates.push(im.link || im.thumbnail);
+    }
+  }
+  if (Array.isArray(item.images)) {
+    for (const im of item.images) {
+      if (typeof im === 'string') imgCandidates.push(im);
+      else if (im && (im.link || im.thumbnail)) imgCandidates.push(im.link || im.thumbnail);
     }
   }
 
-  for (const s of candidates) {
-    const m = s.match(/(\d[\d\s.,]*)/);
-    if (m) {
-      const num = Number(m[1].replace(/\s/g,'').replace(',','.'));
-      if (isFinite(num)) return Math.round(num);
-    }
+  if (item.thumbnail) imgCandidates.push(item.thumbnail);
+  if (item.image) imgCandidates.push(item.image);
+
+  // de-dup
+  const seen = new Set();
+  const cleaned = [];
+  for (let url of imgCandidates) {
+    if (!url || typeof url !== 'string') continue;
+    // strip google sizing like "=w300-h300" or "&w=300&h=300"
+    url = url.replace(/=w\d+-h\d+(-[a-z]+)?/gi, '').replace(/[?&](w|h|q)=\d+/gi, '');
+    if (!seen.has(url)) { seen.add(url); cleaned.push(url); }
   }
-  return 0;
+  return cleaned[0] || '';
 }
 
-/* -----------------------------
-   Description & specs
------------------------------- */
-function extractDescription(it){
-  const parts = [];
+/**
+ * Normalize a SerpAPI Shopping result object into our internal shape.
+ */
+function normalizeShoppingItem(x) {
+  // Title / name
+  const name = x.title || x.name || 'Product';
 
-  if (it.snippet) parts.push(it.snippet);
+  // Merchant/source
+  const merchant =
+    x.source ||
+    x.store ||
+    (x.seller && x.seller.name) ||
+    (x.extensions && x.extensions.find?.(e => typeof e === 'string')) ||
+    '';
 
-  if (Array.isArray(it.product_highlights) && it.product_highlights.length){
-    parts.push(it.product_highlights.join('. '));
-  }
+  // Prices appear in many fields; try all
+  const priceStr =
+    x.extracted_price ||
+    x.price ||
+    x.unit_price ||
+    (x.prices && x.prices[0]?.extracted_price) ||
+    (x.prices && x.prices[0]?.price) ||
+    '';
 
-  if (Array.isArray(it.product_attributes) && it.product_attributes.length){
-    const keep = new Set(['Brand','Model','Material','Color','Size','Capacity','Dimensions','Weight','Version']);
-    const kv = it.product_attributes
-      .filter(a => a?.name && a?.value && keep.has(a.name))
-      .map(a => `${a.name}: ${a.value}`);
-    if (kv.length) parts.push(kv.join(', '));
-  }
+  const price_nok = typeof priceStr === 'number' ? priceStr : parseNokPrice(priceStr);
 
-  if (Array.isArray(it.extensions) && it.extensions.length){
-    parts.push(it.extensions.join(' • '));
-  }
-
-  const s = parts.join(' — ').replace(/\s+/g,' ').trim();
-  return s || '';
+  return {
+    id: String(x.product_id || x.product_id_token || x.position || name).slice(0, 128),
+    name,
+    description: x.snippet || x.description || '',
+    image_url: bestImage(x),
+    images: x.product_images || x.images || [],
+    price_nok: Number(price_nok || 0),
+    merchant_name: merchant,
+    tags: (x.category || x.sub_title || '').toString().toLowerCase()
+  };
 }
 
-function extractSpecs(it){
-  const out = [];
-  if (Array.isArray(it.product_attributes)){
-    for (const a of it.product_attributes){
-      if (a?.name && a?.value){
-        out.push({ key: String(a.name), value: String(a.value) });
-      }
-    }
-  }
-  if (it.brand) out.push({ key:'Brand', value:String(it.brand) });
-  if (it.condition) out.push({ key:'Condition', value:String(it.condition) });
-  return out;
-}
-
-/* -----------------------------
-   Image extraction (Hi-Res first)
------------------------------- */
-function scoreImageUrl(u){
-  try {
-    const url = new URL(u);
-    const host = url.hostname;
-    if (/encrypted\-tbn\d?\.gstatic\.com/.test(host)) return 1;
-
-    const s = u.toLowerCase();
-    const wh = s.match(/[?&](w|width|h|height|s|size)=([0-9]{2,4})/g) || [];
-    let maxWH = 0;
-    for (const seg of wh){
-      const n = Number((seg.match(/=([0-9]{2,4})/)||[])[1]);
-      if (n>maxWH) maxWH=n;
-    }
-
-    const base = 50;
-    return base + Math.min(maxWH, 1600) + Math.min(u.length/10, 200);
-  } catch {
-    return 10;
-  }
-}
-
-function gatherImages(it){
-  const imgs = [];
-  if (it.image) imgs.push(it.image);
-  if (Array.isArray(it.images)) imgs.push(...it.images);
-  if (Array.isArray(it.product_photos)) {
-    imgs.push(...it.product_photos.map(p => p?.link || p?.thumbnail).filter(Boolean));
-  }
-  if (Array.isArray(it.inline_images)) {
-    imgs.push(...it.inline_images.map(p => p?.link || p?.thumbnail).filter(Boolean));
-  }
-  if (it.thumbnail) imgs.push(it.thumbnail);
-
-  const unique = [...new Set(imgs.filter(Boolean))];
-  unique.sort((a,b)=> scoreImageUrl(b) - scoreImageUrl(a));
-
-  return unique.slice(0,6);
-}
-
-/* -----------------------------
-   Main search
------------------------------- */
-export async function serpapiSearch(params){
-  if(!SERPAPI_KEY) return [];
-
-  const q = buildQuery(params);
-  const url = new URL('https://serpapi.com/search.json');
-  url.searchParams.set('engine','google_shopping');
-  url.searchParams.set('q', q);
-  url.searchParams.set('gl','no');
-  url.searchParams.set('hl','en');
-  url.searchParams.set('api_key', SERPAPI_KEY);
-
-  let data;
-  try {
-    const r = await fetch(url);
-    if(!r.ok) return [];
-    data = await r.json();
-  } catch {
+/**
+ * Perform the SerpAPI request (Google Shopping).
+ * We use Norwegian locale by default: gl=no, hl=no
+ */
+export async function serpapiSearch({ age = 0, gender = '', budget = 0, notes = '' } = {}) {
+  if (!SERPAPI_KEY) {
+    // No key → return empty; caller will fall back to local DB
     return [];
   }
 
-  const items = Array.isArray(data?.shopping_results) ? data.shopping_results.slice(0, 30) : [];
+  const q = buildQuery({ age, gender, notes, budget });
 
-  const normalized = items.map((it, idx) => {
-    const images = gatherImages(it);
-    const price_nok = parseNokPrice(it);
-    const description = extractDescription(it);
-    const specs = extractSpecs(it);
+  const params = new URLSearchParams({
+    engine: 'google_shopping',
+    q,
+    gl: 'no',
+    hl: 'no',
+    num: '20',
+    api_key: SERPAPI_KEY
+  });
 
-    return {
-      id: it.product_id || it.position || `serpapi-${Date.now()}-${idx}`,
-      name: it.title || it.source || 'Product',
-      description,
-      image_url: images[0] || '',
-      images,
-      price_nok,
-      merchant_name: it.source || '',
-      tags: '',
-      external_url: it.link || '',
-      specs
-    };
-  }).filter(p => p.image_url);
+  const url = `https://serpapi.com/search.json?${params.toString()}`;
 
-  return normalized;
+  try {
+    const res = await fetch(url, { timeout: 12000 });
+    if (!res.ok) {
+      // rate limited or other error; return empty and let caller fallback
+      return [];
+    }
+    const data = await res.json();
+
+    // SerpAPI returns results in various arrays; stitch likely ones
+    const rawItems = [
+      ...(Array.isArray(data.shopping_results) ? data.shopping_results : []),
+      ...(Array.isArray(data.organic_results) ? data.organic_results : [])
+    ];
+
+    // Normalize, filter for usable items (price + image)
+    let items = rawItems.map(normalizeShoppingItem);
+    items = items.filter(it => it.image_url && Number(it.price_nok || 0) > 0);
+
+    // De-dup by id or name
+    const seen = new Set();
+    const out = [];
+    for (const it of items) {
+      const key = it.id || it.name.toLowerCase();
+      if (seen.has(key)) continue;
+      seen.add(key);
+      out.push(it);
+    }
+
+    return out;
+  } catch {
+    return [];
+  }
 }
