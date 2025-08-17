@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en">
+<html lang="no">
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
@@ -30,30 +30,38 @@
   .btn.primary{background:var(--brand);color:#fff;box-shadow:0 10px 26px rgba(14,165,233,.25)}
   .btn.ghost{background:#f1f5f9;color:#0f172a}
   .btn.danger{background:var(--err);color:#fff}
+
   .person{display:flex;align-items:center;gap:12px;padding:10px;border:1px solid var(--line);border-radius:14px;cursor:pointer}
   .avatar{width:42px;height:42px;border-radius:12px;background:#f0f9ff;display:grid;place-items:center;color:var(--brand-ink);font-weight:800}
   .grow{flex:1}
-  .right{display:flex;gap:8px}
   .pill{font-size:12px;padding:4px 8px;border-radius:999px;background:#f8fafc;border:1px solid var(--line);color:#334155}
+
+  /* Ideer (oversikt) */
   .idea{padding:12px;cursor:pointer}
   .idea-img{width:100%;aspect-ratio:1/1;border-radius:14px;overflow:hidden;background:#f8fafc;border:1px solid var(--line)}
   .idea-img>img{width:100%;height:100%;object-fit:cover;display:block}
   .idea-title{font-weight:800;margin:10px 2px 6px}
-  .idea-meta{display:flex;justify-content:space-between;color:var(--muted);font-size:14px}
-  .idea-desc{margin-top:6px;color:var(--ink);opacity:.92}
-  /* Product detail */
+  .idea-meta{display:flex;justify-content:space-between;color:#334155;font-size:15px;align-items:center}
+  .idea-actions{display:flex;gap:10px;margin-top:8px}
+  .idea .subtext{display:none} /* skjul repeterende tekst i oversikten */
+
+  /* Produktdetalj */
   .pd-hero{width:100%;aspect-ratio:1/1;border-radius:18px;overflow:hidden;background:#f8fafc;border:1px solid var(--line)}
   .pd-hero>img{width:100%;height:100%;object-fit:cover;display:block}
   .pd-title{font-weight:800;font-size:20px;margin-top:10px}
   .pd-meta{display:flex;justify-content:space-between;align-items:center;color:#334155;margin-top:6px}
   .pd-desc{margin-top:10px}
+
+  /* Tabs */
   nav.tabs{position:sticky;bottom:0;left:0;right:0;background:var(--bg);border-top:1px solid var(--line);display:grid;grid-template-columns:repeat(3,1fr)}
   .tab{padding:12px 8px;text-align:center;color:#334155;cursor:pointer;font-weight:600}
   .tab.active{color:var(--brand-ink);background:#f0f9ff}
+
   .empty{color:var(--muted);padding:18px}
   .hint{font-size:12px;color:var(--muted)}
   .ok{color:var(--ok)} .err{color:var(--err)}
   .hidden{display:none !important}
+
   @media(prefers-color-scheme:dark){
     :root{--bg:#0b1020;--ink:#e8ecf3;--card:#0f1528;--line:#1f2538;--muted:#94a3b8;--brand:#22d3ee;--brand-ink:#06b6d4}
     .btn.ghost{background:#111827;color:#e5e7eb}
@@ -64,10 +72,10 @@
 <body>
 <div class="app">
   <header>
-    <div class="back" id="backBtn" title="Back"></div>
+    <div class="back" id="backBtn" title="Tilbake"></div>
     <div style="display:flex;flex-direction:column">
       <div class="brand">Giftify</div>
-      <div class="muted" id="status">Not logged in</div>
+      <div class="muted" id="status">Ikke innlogget</div>
     </div>
     <div style="margin-left:auto" class="pill" id="apiHost"></div>
   </header>
@@ -75,12 +83,12 @@
   <main id="screens">
     <!-- AUTH -->
     <section id="auth" class="screen">
-      <div class="title">Welcome</div>
+      <div class="title">Velkommen</div>
       <div class="card">
         <div class="stack">
-          <div class="row"><input id="authEmail" placeholder="you@example.com" /><input id="authPw" type="password" placeholder="password" /></div>
-          <div class="row"><button class="btn primary" id="btnSignup">Create account</button><button class="btn ghost" id="btnLogin">Sign in</button></div>
-          <div class="hint">We’ll keep you signed in on this device.</div>
+          <div class="row"><input id="authEmail" placeholder="deg@example.com" /><input id="authPw" type="password" placeholder="passord" /></div>
+          <div class="row"><button class="btn primary" id="btnSignup">Opprett konto</button><button class="btn ghost" id="btnLogin">Logg inn</button></div>
+          <div class="hint">Vi holder deg innlogget på denne enheten.</div>
           <div id="authMsg" class="hint"></div>
         </div>
       </div>
@@ -88,33 +96,36 @@
 
     <!-- DASHBOARD -->
     <section id="dashboard" class="screen hidden">
-      <div class="title">Dashboard</div>
+      <div class="title">Oversikt</div>
       <div class="card">
         <div class="stack">
           <div class="row" style="justify-content:space-between">
-            <strong>People</strong>
-            <button class="btn ghost" id="btnAddPerson">+ Add person</button>
+            <strong>Personer</strong>
+            <button class="btn ghost" id="btnAddPerson">+ Legg til</button>
           </div>
           <div id="peopleList"></div>
-          <div id="peopleEmpty" class="empty">No people yet. Add someone to start getting gift ideas.</div>
+          <div id="peopleEmpty" class="empty">Ingen personer enda. Legg til noen for å få gaveforslag.</div>
         </div>
       </div>
     </section>
 
     <!-- ADD / EDIT PERSON -->
     <section id="personForm" class="screen hidden">
-      <div class="title" id="personTitle">Add Person</div>
+      <div class="title" id="personTitle">Legg til person</div>
       <div class="card">
         <div class="stack">
-          <input id="pName" placeholder="Name" />
-          <div class="row"><input id="pBirthday" type="date" /><select id="pGender">
-            <option value="">Gender (optional)</option><option>male</option><option>female</option><option>unisex</option></select>
+          <input id="pName" placeholder="Navn" />
+          <div class="row">
+            <input id="pBirthday" type="date" />
+            <select id="pGender">
+              <option value="">Kjønn (valgfritt)</option><option>male</option><option>female</option><option>unisex</option>
+            </select>
           </div>
-          <input id="pBudget" type="number" placeholder="Budget (NOK)" />
-          <textarea id="pNotes" placeholder="Interests, likes, dislikes, sizes… (optional)"></textarea>
+          <input id="pBudget" type="number" placeholder="Budsjett (NOK)" />
+          <textarea id="pNotes" placeholder="Interesser, liker/liker ikke, størrelser … (valgfritt)"></textarea>
           <div class="row" style="justify-content:space-between">
-            <button class="btn ghost" id="btnCancelPerson">Cancel</button>
-            <button class="btn primary" id="btnSavePerson">Save</button>
+            <button class="btn ghost" id="btnCancelPerson">Avbryt</button>
+            <button class="btn primary" id="btnSavePerson">Lagre</button>
           </div>
         </div>
       </div>
@@ -122,15 +133,19 @@
 
     <!-- GIFT IDEAS -->
     <section id="ideas" class="screen hidden">
-      <div class="title" id="ideasTitle">Gift Ideas</div>
+      <div class="title" id="ideasTitle">Gaveideer</div>
       <div class="muted" id="ideasBudget" style="margin:0 2px 10px"></div>
       <div id="ideasWrap"></div>
-      <div id="ideasEmpty" class="empty">No ideas matched the budget window. Try changing the budget or notes.</div>
+      <div class="row" style="justify-content:space-between;margin:10px 2px">
+        <span class="hint">Viser 3 forslag innen budsjett.</span>
+        <button class="btn ghost" id="btnRefreshIdeas">Gi meg nye ideer</button>
+      </div>
+      <div id="ideasEmpty" class="empty">Fant ingen ideer. Prøv å endre budsjett eller notater.</div>
     </section>
 
     <!-- PRODUCT DETAIL -->
     <section id="productDetail" class="screen hidden">
-      <div class="title" id="pdTitle">Product</div>
+      <div class="title" id="pdTitle">Produkt</div>
       <div class="card">
         <div class="pd-hero" id="pdHero"></div>
         <div class="pd-title" id="pdName"></div>
@@ -141,31 +156,31 @@
         <div class="pd-desc" id="pdDesc"></div>
         <div id="pdSpecs" class="stack" style="margin-top:10px"></div>
         <div class="row" style="justify-content:flex-end;margin-top:12px">
-          <button class="btn primary" id="pdBuy">Buy now</button>
+          <button class="btn primary" id="pdBuy">Kjøp nå</button>
         </div>
       </div>
     </section>
 
     <!-- PROFILE -->
     <section id="profile" class="screen hidden">
-      <div class="title">Profile</div>
+      <div class="title">Profil</div>
       <div class="card">
         <div class="stack">
-          <div><strong>Email:</strong> <span id="meEmail" class="muted">—</span></div>
+          <div><strong>E-post:</strong> <span id="meEmail" class="muted">—</span></div>
           <div class="row" style="justify-content:space-between">
-            <button class="btn ghost" id="btnRefresh">Refresh</button>
-            <button class="btn danger" id="btnLogout">Log out</button>
+            <button class="btn ghost" id="btnRefresh">Oppdater</button>
+            <button class="btn danger" id="btnLogout">Logg ut</button>
           </div>
         </div>
       </div>
     </section>
   </main>
 
-  <!-- BOTTOM TABS -->
+  <!-- BUNNMENY -->
   <nav class="tabs" id="tabs">
-    <div class="tab active" data-tab="dashboard">🏠 Dashboard</div>
-    <div class="tab" data-tab="create">＋ Create New</div>
-    <div class="tab" data-tab="profile">👤 Profile</div>
+    <div class="tab active" data-tab="dashboard">🏠 Oversikt</div>
+    <div class="tab" data-tab="create">＋ Ny</div>
+    <div class="tab" data-tab="profile">👤 Profil</div>
   </nav>
 </div>
 
@@ -182,6 +197,7 @@
   let editingId = null;
   let currentIdeas = [];
   let selectedProduct = null;
+  let lastIdeaParams = null;
 
   const PEOP_KEY = 'giftify_people';
   const people = {
@@ -195,13 +211,13 @@
     const res = await fetch(API+path, { ...opts, headers });
     const txt = await res.text(); try { return JSON.parse(txt) } catch { throw new Error(txt || res.statusText) }
   }
-  const fmtDate = iso => { try { if(!iso) return ''; const d = new Date(iso); return d.toLocaleDateString(); } catch { return iso || '' } };
+  const fmtDate = iso => { try { if(!iso) return ''; const d = new Date(iso); return d.toLocaleDateString('no-NO'); } catch { return iso || '' } };
 
   function setAuthedUI(authed){
     $('#auth').classList.toggle('hidden', authed);
     tabsEl.classList.toggle('hidden', !authed);
     backBtn.style.visibility = 'hidden';
-    statusEl.textContent = authed ? 'Signed in' : 'Not logged in';
+    statusEl.textContent = authed ? 'Innlogget' : 'Ikke innlogget';
     if (authed) { show('dashboard'); renderPeople(); } else { show('auth'); }
   }
 
@@ -216,9 +232,9 @@
         <div class="avatar">${(p.name||'?').slice(0,1).toUpperCase()}</div>
         <div class="grow">
           <div style="font-weight:800">${p.name}</div>
-          <div class="muted">Birthday ${fmtDate(p.birthdate)}</div>
+          <div class="muted">Bursdag ${fmtDate(p.birthdate)}</div>
         </div>
-        <div class="right"><span class="pill">${p.budget? p.budget+' NOK':''}</span></div>
+        <span class="pill">${p.budget? p.budget+' NOK':''}</span>
       `;
       row.onclick = () => openIdeas(p);
       listEl.appendChild(row);
@@ -227,35 +243,30 @@
 
   function openAdd(){
     editingId = null;
-    $('#personTitle').textContent = 'Add Person';
-    $('#pName').value = ''; $('#pBirthday').value = ''; $('#pGender').value = ''; $('#pBudget').value = ''; $('#pNotes').value = '';
-    show('personForm'); tabsEl.classList.add('hidden'); backBtn.style.visibility = 'visible';
-  }
-
-  function openEdit(p){
-    editingId = p.id;
-    $('#personTitle').textContent = 'Edit Person';
-    $('#pName').value = p.name || '';
-    $('#pBirthday').value = p.birthdate ? new Date(p.birthdate).toISOString().slice(0,10) : '';
-    $('#pGender').value = p.gender || '';
-    $('#pBudget').value = p.budget || '';
-    $('#pNotes').value = p.notes || '';
+    $('#personTitle').textContent = 'Legg til person';
+    $('#pName').value = ''; $('#pBirthday').value = ''; $('#pGender').value=''; $('#pBudget').value=''; $('#pNotes').value='';
     show('personForm'); tabsEl.classList.add('hidden'); backBtn.style.visibility = 'visible';
   }
 
   async function openIdeas(p){
     const age = p.birthdate ? Math.max(0, Math.floor((Date.now()-new Date(p.birthdate).getTime())/31557600000)) : 0;
-    $('#ideasTitle').textContent = `Gift Ideas for ${p.name || ''}`;
-    $('#ideasBudget').textContent = p.budget ? `Budget ${p.budget} NOK` : 'No budget set';
+    $('#ideasTitle').textContent = `Gaveideer for ${p.name || ''}`;
+    $('#ideasBudget').textContent = p.budget ? `Budsjett ${p.budget} NOK` : 'Ikke satt budsjett';
     $('#ideasWrap').innerHTML = ''; $('#ideasEmpty').style.display = 'none';
     show('ideas'); tabsEl.classList.add('hidden'); backBtn.style.visibility = 'visible';
+
+    lastIdeaParams = { age, gender: p.gender||'', budget: p.budget||0, notes: p.notes||'' };
+    await fetchIdeas({ exclude: [] });
+  }
+
+  async function fetchIdeas({ exclude }){
+    const q = new URLSearchParams({ ...lastIdeaParams, exclude: exclude.join(','), t: Date.now() }).toString();
     try{
-      const q = new URLSearchParams({ age: age||0, gender: p.gender||'', budget: p.budget||0, notes: p.notes||'' }).toString();
       const j = await call('/ideas?'+q);
       currentIdeas = Array.isArray(j.ideas)? j.ideas : [];
       renderIdeas(currentIdeas);
     }catch(e){
-      $('#ideasWrap').innerHTML = ''; $('#ideasEmpty').style.display = 'block'; $('#ideasEmpty').textContent = 'Failed to load ideas: '+e.message;
+      $('#ideasWrap').innerHTML = ''; $('#ideasEmpty').style.display = 'block'; $('#ideasEmpty').textContent = 'Kunne ikke laste ideer: '+e.message;
     }
   }
 
@@ -266,16 +277,24 @@
     for (const it of list){
       const price = Math.round(it.price_nok||0);
       const card = document.createElement('div');
-      card.className = 'card idea';
+      card.className = 'card';
       card.innerHTML = `
-        <div class="idea-img">${it.image_url ? `<img src="${it.image_url}" loading="lazy" alt="">` : ''}</div>
-        <div class="idea-title">${it.name||'Product'}</div>
-        <div class="idea-meta">
-          <strong>${price ? price+' NOK' : ''}</strong>
-          <span class="muted">${it.merchant_name||''}</span>
+        <div class="idea">
+          <div class="idea-img">${it.image_url ? `<img src="${it.image_url}" loading="lazy" alt="">` : ''}</div>
+          <div class="idea-title">${it.name||'Produkt'}</div>
+          <div class="idea-meta">
+            <strong>${price ? price+' NOK' : ''}</strong>
+            <span class="muted">${it.merchant_name||''}</span>
+          </div>
+          <div class="idea-actions">
+            <button class="btn ghost" data-act="detaljer">Detaljer</button>
+            <button class="btn primary" data-act="kjop">Kjøp nå</button>
+          </div>
+          <div class="subtext">${it.description||''}</div>
         </div>
-        ${it.description ? `<div class="idea-desc">${it.description}</div>` : ''}
       `;
+      card.querySelector('[data-act="detaljer"]').onclick = (e)=>{ e.stopPropagation(); openProduct(it); };
+      card.querySelector('[data-act="kjop"]').onclick = (e)=>{ e.stopPropagation(); mockBuy(it); };
       card.onclick = () => openProduct(it);
       wrap.appendChild(card);
     }
@@ -283,33 +302,37 @@
 
   function openProduct(item){
     selectedProduct = item;
-    $('#pdTitle').textContent = 'Product';
     $('#pdHero').innerHTML = item.image_url ? `<img src="${item.image_url}" alt="">` : '';
-    $('#pdName').textContent = item.name || 'Product';
+    $('#pdTitle').textContent = 'Produkt';
+    $('#pdName').textContent = item.name || 'Produkt';
     $('#pdPrice').textContent = Math.round(item.price_nok||0) ? Math.round(item.price_nok)+' NOK' : '';
     $('#pdMerchant').textContent = item.merchant_name || '';
-    $('#pdDesc').textContent = item.description || '';
-    const specs = Array.isArray(item.specs) ? item.specs : [];
-    $('#pdSpecs').innerHTML = specs.length ? specs.map(s => `<div class="row" style="justify-content:space-between"><span class="muted">${s.key}</span><strong>${s.value}</strong></div>`).join('') : '';
+    // Rikere beskrivelse
+    const extra = item.tags ? `\nKategori: ${item.tags}` : '';
+    $('#pdDesc').textContent = (item.description || 'Produktdetaljer kommer snart.') + extra;
+    $('#pdSpecs').innerHTML = ''; // Skjult hvis ikke spesifikasjoner
     show('productDetail'); tabsEl.classList.add('hidden'); backBtn.style.visibility = 'visible';
   }
 
-  $('#pdBuy').onclick = () => {
-    // Mock checkout for now
-    alert('Order placed ✅\n\nThis is a test checkout. We will integrate a real provider later.');
-    // Optional: you could POST /orders here if you wire it on the backend
-    // Then go back to Ideas
-    show('ideas'); tabsEl.classList.add('hidden'); backBtn.style.visibility = 'visible';
+  function mockBuy(item){
+    alert(`Bestilling lagt inn ✅\n\n${item.name}\n${Math.round(item.price_nok||0)} NOK`);
+    // Her kan vi POST /orders når du ønsker ekte lagring
+  }
+
+  // Forny ideer (be om nye 3, utelukk de vi nettopp viste)
+  $('#btnRefreshIdeas').onclick = async () => {
+    const exclude = currentIdeas.map(x => x.id).filter(Boolean);
+    await fetchIdeas({ exclude });
   };
 
-  // Save / Cancel person
+  // Person lagring
   $('#btnSavePerson').onclick = () => {
     const name = $('#pName').value.trim();
     const birthdate = $('#pBirthday').value || '';
     const gender = $('#pGender').value || '';
     const budget = Number($('#pBudget').value || 0);
     const notes = $('#pNotes').value.trim();
-    if (!name || !birthdate){ alert('Please enter name and birthday'); return; }
+    if (!name || !birthdate){ alert('Skriv inn navn og bursdag'); return; }
     const arr = people.list();
     if (editingId){
       const i = arr.findIndex(x => x.id === editingId);
@@ -324,7 +347,6 @@
   $('#btnCancelPerson').onclick = backToDashboard;
 
   function backToDashboard(){ show('dashboard'); tabsEl.classList.remove('hidden'); backBtn.style.visibility = 'hidden'; renderPeople(); }
-
   backBtn.onclick = () => {
     const current = [...document.querySelectorAll('.screen')].find(el => !el.classList.contains('hidden'));
     if (!current) return;
@@ -351,7 +373,7 @@
     try{
       const j = await call('/auth/signup',{method:'POST',body:JSON.stringify({fullName:'Web User',email,password})});
       token = j.token || ''; me = { email: j.user?.email || email }; localStorage.setItem('jwt', token); localStorage.setItem('email', me.email);
-      $('#authMsg').innerHTML = '<span class="ok">Account created</span>'; setAuthedUI(true);
+      $('#authMsg').innerHTML = '<span class="ok">Konto opprettet</span>'; setAuthedUI(true);
     }catch(e){ $('#authMsg').innerHTML = '<span class="err">'+e.message+'</span>'; }
   };
   $('#btnLogin').onclick = async () => {
@@ -359,7 +381,7 @@
     try{
       const j = await call('/auth/login',{method:'POST',body:JSON.stringify({email,password})});
       token = j.token || ''; me = { email: j.user?.email || email }; localStorage.setItem('jwt', token); localStorage.setItem('email', me.email);
-      $('#authMsg').innerHTML = '<span class="ok">Signed in</span>'; setAuthedUI(true);
+      $('#authMsg').innerHTML = '<span class="ok">Innlogget</span>'; setAuthedUI(true);
     }catch(e){ $('#authMsg').innerHTML = '<span class="err">'+e.message+'</span>'; }
   };
   $('#btnLogout').onclick = () => { token = ''; me = null; localStorage.removeItem('jwt'); localStorage.removeItem('email'); setAuthedUI(false); };
